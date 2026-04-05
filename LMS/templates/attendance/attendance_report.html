@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Report | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0">
+		<div class="card-body p-4 p-lg-5">
+			<span class="eyebrow">Reports</span>
+			<h1 class="h2 mb-3">Download Attendance Report</h1>
+			<p class="text-secondary mb-4">
+				Select a subject and date range, then download the report as PDF or XLSX.
+			</p>
+
+			<form method="post" action="{% url 'attendance:attendance-report-download' %}" class="stack-form">
+				{% csrf_token %}
+				{{ form.as_p }}
+				<div class="d-flex flex-wrap gap-2 mt-4">
+					<button class="btn btn-primary" type="submit" name="format" value="pdf">Download PDF</button>
+					<button class="btn btn-outline-primary" type="submit" name="format" value="xlsx">Download XLSX</button>
+					<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-list' %}">Back</a>
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
+{% endblock %}

@@ -13,9 +13,9 @@
 					<p class="text-secondary mb-0">Subject {{ attendance.subject|default:"-" }} | Teacher {{ attendance.teacher|default:"-" }} | Faculty {{ attendance.faculty|default:"-" }} | Year {{ attendance.enrollment_batch|default:"-" }}</p>
 				</div>
 				<div class="d-flex flex-wrap gap-2">
-					<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-update' attendance.pk %}">Edit</a>
-					<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-roster' attendance.pk %}">Roster</a>
-					<a class="btn btn-outline-danger" href="{% url 'attendance:attendance-delete' attendance.pk %}">Delete</a>
+				<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-update' attendance.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+				<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-roster' attendance.pk %}">Roster</a>
+				<a class="btn btn-outline-danger" href="{% url 'attendance:attendance-delete' attendance.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
 					<a class="btn btn-primary" href="{% url 'attendance:attendance-list' %}">Back to List</a>
 				</div>
 			</div>

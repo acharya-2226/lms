@@ -1,9 +1,23 @@
 from django.db import models
 
 
+class FacultyManager(models.Manager):
+    def get_or_create_case_insensitive(self, name):
+        """Get or create Faculty by case-insensitive name match."""
+        cleaned = (name or '').strip()
+        if not cleaned:
+            raise ValueError('Faculty name cannot be empty.')
+
+        existing = self.filter(name__iexact=cleaned).first()
+        if existing:
+            return existing, False
+        return self.create(name=cleaned), True
+
+
 # Create your models here.
 class Faculty(models.Model):
     name = models.CharField(max_length=150, unique=True)
+    objects = FacultyManager()
 
     def __str__(self):
         return self.name

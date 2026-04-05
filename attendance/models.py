@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 from student.models import EnrollmentYear, Faculty, Subject
 from teacher.models import Teacher
@@ -51,6 +52,15 @@ class Attendance(models.Model):
         elif self.attendance_date:
             self.title = f'Attendance : {self.attendance_date}'
         super().save(*args, **kwargs)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['subject', 'faculty', 'enrollment_batch', 'attendance_date'],
+                condition=Q(subject__isnull=False, faculty__isnull=False, enrollment_batch__isnull=False),
+                name='unique_attendance_subject_faculty_year_date',
+            ),
+        ]
 
 
 class AttendanceEntry(models.Model):

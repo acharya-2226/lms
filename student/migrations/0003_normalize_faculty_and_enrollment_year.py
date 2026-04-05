@@ -14,7 +14,10 @@ def forward_normalize_student_categories(apps, schema_editor):
         year_value = (student.enrollment_batch or '').strip() if isinstance(student.enrollment_batch, str) else ''
 
         if faculty_value:
-            faculty_obj, _ = Faculty.objects.get_or_create(name=faculty_value)
+            # Case-insensitive lookup
+            faculty_obj = Faculty.objects.filter(name__iexact=faculty_value).first()
+            if not faculty_obj:
+                faculty_obj = Faculty.objects.create(name=faculty_value.strip())
 
         if year_value:
             try:

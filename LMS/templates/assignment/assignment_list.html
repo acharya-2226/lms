@@ -37,10 +37,10 @@
 							<td>{{ assignment.due_date|date:"F j, Y"|default:"-" }}</td>
 							<td class="text-end">
 								<div class="action-links">
-									<a href="{% url 'assignment:assignment-detail' assignment.pk %}">View</a>
+									<a href="{% url 'assignment:assignment-detail' assignment.pk %}" aria-label="View" title="View"><i class="bi bi-eye text-primary"></i><span class="visually-hidden">View</span></a>
 									<a href="{% url 'assignment:assignment-roster' assignment.pk %}">Roster</a>
-									<a href="{% url 'assignment:assignment-update' assignment.pk %}">Edit</a>
-									<a href="{% url 'assignment:assignment-delete' assignment.pk %}">Delete</a>
+									<a href="{% url 'assignment:assignment-update' assignment.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+									<a href="{% url 'assignment:assignment-delete' assignment.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
 								</div>
 							</td>
 						</tr>

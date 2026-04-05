@@ -13,8 +13,8 @@
 					<p class="text-secondary mb-0">Employee ID {{ teacher.employee_id|default:"-" }}</p>
 				</div>
 				<div class="d-flex flex-wrap gap-2">
-					<a class="btn btn-outline-primary" href="{% url 'teacher:teacher-update' teacher.pk %}">Edit</a>
-					<a class="btn btn-outline-danger" href="{% url 'teacher:teacher-delete' teacher.pk %}">Delete</a>
+					<a class="btn btn-outline-primary" href="{% url 'teacher:teacher-update' teacher.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+					<a class="btn btn-outline-danger" href="{% url 'teacher:teacher-delete' teacher.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
 					<a class="btn btn-primary" href="{% url 'teacher:teacher-list' %}">Back to List</a>
 				</div>
 			</div>

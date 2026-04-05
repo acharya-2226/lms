@@ -14,12 +14,15 @@
 				</div>
 				<div class="d-flex flex-wrap gap-2">
 					<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-detail' attendance.pk %}">Back to Attendance</a>
+					<button class="btn btn-primary" type="submit" form="attendance-roster-form">Save Attendance</button>
 				</div>
 			</div>
 
 			{% if entries %}
-				<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
-					<table class="table align-middle mb-0">
+				<form id="attendance-roster-form" method="post">
+					{% csrf_token %}
+					<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+						<table class="table align-middle mb-0">
 						<thead class="table-light">
 							<tr>
 								<th>Student</th>
@@ -30,43 +33,32 @@
 						</thead>
 						<tbody>
 							{% for entry in entries %}
-								<tr>
+								<tr data-entry-row="{{ entry.pk }}">
 									<td>{{ entry.student.name }}</td>
 									<td>{{ entry.student.roll_number|default:"-" }}</td>
 									<td>
-										{% if entry.status == 'present' %}
-											<span class="badge text-bg-success">Present</span>
-										{% elif entry.status == 'absent' %}
-											<span class="badge text-bg-danger">Absent</span>
-										{% else %}
-											<span class="badge text-bg-secondary">Unmarked</span>
-										{% endif %}
+										<span class="badge {% if entry.status == 'present' %}text-bg-success{% elif entry.status == 'absent' %}text-bg-danger{% else %}text-bg-secondary{% endif %}" data-status-badge="{{ entry.pk }}">
+											{% if entry.status == 'present' %}Present{% elif entry.status == 'absent' %}Absent{% else %}Unmarked{% endif %}
+										</span>
 									</td>
 									<td class="text-end">
-										<form method="post" class="d-inline" data-loading-submit>
-											{% csrf_token %}
-											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
-											<input type="hidden" name="status" value="present">
-											<button class="btn btn-sm btn-success" type="submit">Present</button>
-										</form>
-										<form method="post" class="d-inline ms-2" data-loading-submit>
-											{% csrf_token %}
-											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
-											<input type="hidden" name="status" value="absent">
-											<button class="btn btn-sm btn-danger" type="submit">Absent</button>
-										</form>
-										<form method="post" class="d-inline ms-2" data-loading-submit>
-											{% csrf_token %}
-											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
-											<input type="hidden" name="status" value="unmarked">
-											<button class="btn btn-sm btn-outline-secondary" type="submit">Reset</button>
-										</form>
+										<input type="hidden" name="status_{{ entry.pk }}" value="{{ entry.status|default:'unmarked' }}" data-entry-status-input="{{ entry.pk }}">
+										<div class="btn-group btn-group-sm" role="group" aria-label="Attendance actions for {{ entry.student.name }}">
+												<button class="btn btn-outline-success {% if entry.status == 'present' %}active{% endif %}" type="button" data-entry-status-button="{{ entry.pk }}" data-status-value="present">Present</button>
+												<button class="btn btn-outline-danger {% if entry.status == 'absent' %}active{% endif %}" type="button" data-entry-status-button="{{ entry.pk }}" data-status-value="absent">Absent</button>
+												<button class="btn btn-outline-secondary {% if entry.status == 'unmarked' %}active{% endif %}" type="button" data-entry-status-button="{{ entry.pk }}" data-status-value="unmarked">Reset</button>
+										</div>
 									</td>
 								</tr>
 							{% endfor %}
 						</tbody>
-					</table>
-				</div>
+						</table>
+					</div>
+					<div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+						<button class="btn btn-outline-primary" type="button" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">Back to Top</button>
+						<button class="btn btn-primary" type="submit">Save Attendance</button>
+					</div>
+				</form>
 			{% else %}
 				<div class="empty-state card border-0 shadow-sm">
 					<div class="card-body p-5 text-center">
@@ -78,4 +70,53 @@
 		</div>
 	</div>
 </section>
+{% endblock %}
+
+{% block custom_js %}
+<script>
+	function updateRowSelection(entryId, status) {
+		const input = document.querySelector(`[data-entry-status-input="${entryId}"]`);
+		const badge = document.querySelector(`[data-status-badge="${entryId}"]`);
+		const buttons = document.querySelectorAll(`[data-entry-status-button="${entryId}"]`);
+		if (!input || !badge) {
+			return;
+		}
+
+		input.value = status;
+		badge.className = 'badge';
+		if (status === 'present') {
+			badge.classList.add('text-bg-success');
+			badge.textContent = 'Present';
+		} else if (status === 'absent') {
+			badge.classList.add('text-bg-danger');
+			badge.textContent = 'Absent';
+		} else {
+			badge.classList.add('text-bg-secondary');
+			badge.textContent = 'Unmarked';
+		}
+
+		buttons.forEach((currentButton) => {
+			const currentStatus = currentButton.getAttribute('data-status-value');
+			currentButton.classList.toggle('active', currentStatus === status);
+			if (currentStatus === 'present') {
+				currentButton.classList.toggle('btn-success', currentStatus === status);
+				currentButton.classList.toggle('btn-outline-success', currentStatus !== status);
+			} else if (currentStatus === 'absent') {
+				currentButton.classList.toggle('btn-danger', currentStatus === status);
+				currentButton.classList.toggle('btn-outline-danger', currentStatus !== status);
+			} else {
+				currentButton.classList.toggle('btn-secondary', currentStatus === status);
+				currentButton.classList.toggle('btn-outline-secondary', currentStatus !== status);
+			}
+		});
+	}
+
+	document.querySelectorAll('[data-entry-status-button]').forEach((button) => {
+		button.addEventListener('click', () => {
+			const entryId = button.getAttribute('data-entry-status-button');
+			const status = button.getAttribute('data-status-value');
+			updateRowSelection(entryId, status);
+		});
+	});
+</script>
 {% endblock %}

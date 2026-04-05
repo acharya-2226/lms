@@ -9,51 +9,70 @@
 			<span class="eyebrow">Records</span>
 			<h1 class="h2 mb-0">Teachers</h1>
 		</div>
-		<a class="btn btn-primary" href="{% url 'teacher:teacher-create' %}">Add Teacher</a>
+		<div class="d-flex flex-wrap align-items-center gap-2">
+			<a class="btn btn-outline-secondary" href="{% url 'teacher:teacher-import-template' %}">Download Format</a>
+			<a class="btn btn-outline-primary" href="{% url 'teacher:teacher-import' %}">Import XLSX</a>
+			<a class="btn btn-primary" href="{% url 'teacher:teacher-create' %}">Add Teacher</a>
+		</div>
 	</div>
 
 	{% if teachers %}
-		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
-			<table class="table align-middle mb-0">
-				<thead class="table-light">
-					<tr>
-						<th>Name</th>
-						<th>Employee ID</th>
-						<th>Department</th>
-						<th>Faculties</th>
-						<th>Qualification</th>
-						<th>Experience</th>
-						<th>Email</th>
-						<th class="text-end">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for teacher in teachers %}
-						<tr>
-							<td>{{ teacher.name }}</td>
-							<td>{{ teacher.employee_id|default:"-" }}</td>
-							<td>{{ teacher.department|default:"-" }}</td>
-							<td>
-								{% for faculty in teacher.faculties.all %}
-									{{ faculty.name }}{% if not forloop.last %}, {% endif %}
-								{% empty %}
-									-
-								{% endfor %}
-							</td>
-							<td>{{ teacher.qualification|default:"-" }}</td>
-							<td>{{ teacher.experience_years|default_if_none:"-" }}</td>
-							<td>{{ teacher.email|default:"-" }}</td>
-							<td class="text-end">
-								<div class="action-links">
-									<a href="{% url 'teacher:teacher-detail' teacher.pk %}">View</a>
-									<a href="{% url 'teacher:teacher-update' teacher.pk %}">Edit</a>
-									<a href="{% url 'teacher:teacher-delete' teacher.pk %}">Delete</a>
-								</div>
-							</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
+		<div class="d-grid gap-3">
+			{% for group in grouped_teachers %}
+				<div class="card border-0 shadow-sm">
+					<div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+						<strong>{{ group.faculty }}</strong>
+						<div class="d-flex align-items-center gap-2">
+							<span class="badge text-bg-secondary">{{ group.teachers|length }} teacher{{ group.teachers|length|pluralize }}</span>
+							<button
+								class="btn btn-sm btn-outline-primary"
+								type="button"
+								data-toggle-target="teacher-group-{{ forloop.counter }}"
+								aria-expanded="false"
+								aria-controls="teacher-group-{{ forloop.counter }}"
+							>
+								Show Teachers
+							</button>
+						</div>
+					</div>
+					<div class="d-none" id="teacher-group-{{ forloop.counter }}">
+						<div class="table-responsive">
+							<table class="table align-middle mb-0">
+								<thead class="table-light">
+									<tr>
+										<th>Name</th>
+										<th>Employee ID</th>
+										<th>Department</th>
+										<th>Qualification</th>
+										<th>Experience</th>
+										<th>Email</th>
+										<th class="text-end">Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									{% for teacher in group.teachers %}
+										<tr>
+											<td>{{ teacher.name }}</td>
+											<td>{{ teacher.employee_id|default:"-" }}</td>
+											<td>{{ teacher.department|default:"-" }}</td>
+											<td>{{ teacher.qualification|default:"-" }}</td>
+											<td>{{ teacher.experience_years|default_if_none:"-" }}</td>
+											<td>{{ teacher.email|default:"-" }}</td>
+											<td class="text-end">
+												<div class="action-links">
+													<a href="{% url 'teacher:teacher-detail' teacher.pk %}" aria-label="View" title="View"><i class="bi bi-eye text-primary"></i><span class="visually-hidden">View</span></a>
+													<a href="{% url 'teacher:teacher-update' teacher.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+													<a href="{% url 'teacher:teacher-delete' teacher.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
+												</div>
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			{% endfor %}
 		</div>
 	{% else %}
 		<div class="empty-state card border-0 shadow-sm">
@@ -65,4 +84,23 @@
 		</div>
 	{% endif %}
 </section>
+{% endblock %}
+
+{% block custom_js %}
+<script>
+	document.querySelectorAll('[data-toggle-target]').forEach((button) => {
+		button.addEventListener('click', () => {
+			const targetId = button.getAttribute('data-toggle-target');
+			const target = document.getElementById(targetId);
+			if (!target) {
+				return;
+			}
+
+			const isHidden = target.classList.contains('d-none');
+			target.classList.toggle('d-none');
+			button.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+			button.textContent = isHidden ? 'Hide Teachers' : 'Show Teachers';
+		});
+	});
+</script>
 {% endblock %}

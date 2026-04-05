@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Import Teachers | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="mb-4">
+		<span class="eyebrow">Bulk Upload</span>
+		<h1 class="h2 mb-2">Import Teachers from XLSX</h1>
+		<p class="text-secondary mb-0">
+			Download the format file first, fill teacher records, then upload the XLSX file here.
+		</p>
+	</div>
+
+	<div class="card shadow-sm border-0">
+		<div class="card-body p-4">
+			<form method="post" enctype="multipart/form-data" data-loading-submit>
+				{% csrf_token %}
+				<div class="mb-3">
+					<label for="xlsx_file" class="form-label">XLSX File</label>
+					<input class="form-control" type="file" id="xlsx_file" name="xlsx_file" accept=".xlsx" required>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-secondary" href="{% url 'teacher:teacher-import-template' %}">Download Format</a>
+					<button type="submit" class="btn btn-primary">Import Teachers</button>
+					<a class="btn btn-light" href="{% url 'teacher:teacher-list' %}">Back</a>
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
+{% endblock %}

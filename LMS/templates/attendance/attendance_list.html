@@ -9,7 +9,10 @@
 			<span class="eyebrow">Records</span>
 			<h1 class="h2 mb-0">Attendance</h1>
 		</div>
-		<a class="btn btn-primary" href="{% url 'attendance:attendance-create' %}">Add Attendance</a>
+		<div class="d-flex flex-wrap gap-2">
+			<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-report' %}">Attendance Report</a>
+			<a class="btn btn-primary" href="{% url 'attendance:attendance-create' %}">Add Attendance</a>
+		</div>
 	</div>
 
 	{% if attendances %}
@@ -37,10 +40,10 @@
 							<td>{{ attendance.attendance_date|date:"F j, Y" }}</td>
 							<td class="text-end">
 								<div class="action-links">
-									<a href="{% url 'attendance:attendance-detail' attendance.pk %}">View</a>
+									<a href="{% url 'attendance:attendance-detail' attendance.pk %}" aria-label="View" title="View"><i class="bi bi-eye text-primary"></i><span class="visually-hidden">View</span></a>
 									<a href="{% url 'attendance:attendance-roster' attendance.pk %}">Roster</a>
-									<a href="{% url 'attendance:attendance-update' attendance.pk %}">Edit</a>
-									<a href="{% url 'attendance:attendance-delete' attendance.pk %}">Delete</a>
+									<a href="{% url 'attendance:attendance-update' attendance.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+									<a href="{% url 'attendance:attendance-delete' attendance.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
 								</div>
 							</td>
 						</tr>

@@ -13,8 +13,8 @@
 					<p class="text-secondary mb-0">Roll number {{ student.roll_number }}</p>
 				</div>
 				<div class="d-flex flex-wrap gap-2">
-					<a class="btn btn-outline-primary" href="{% url 'student:student-update' student.pk %}">Edit</a>
-					<a class="btn btn-outline-danger" href="{% url 'student:student-delete' student.pk %}">Delete</a>
+					<a class="btn btn-outline-primary" href="{% url 'student:student-update' student.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+					<a class="btn btn-outline-danger" href="{% url 'student:student-delete' student.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
 					<a class="btn btn-primary" href="{% url 'student:student-list' %}">Back to List</a>
 				</div>
 			</div>
