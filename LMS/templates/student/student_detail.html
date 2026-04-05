@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Details | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0 overflow-hidden">
+		<div class="card-body p-4 p-lg-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+				<div>
+					<span class="eyebrow">Student profile</span>
+					<h1 class="h2 mb-1">{{ student.name }}</h1>
+					<p class="text-secondary mb-0">Roll number {{ student.roll_number }}</p>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-primary" href="{% url 'student:student-update' student.pk %}">Edit</a>
+					<a class="btn btn-outline-danger" href="{% url 'student:student-delete' student.pk %}">Delete</a>
+					<a class="btn btn-primary" href="{% url 'student:student-list' %}">Back to List</a>
+				</div>
+			</div>
+
+			<div class="row g-4 student-detail-row">
+				<div class="col-lg-7">
+					<div class="detail-pane bg-light rounded-4 p-4 h-100">
+						<div class="table-responsive">
+							<table class="table table-striped mb-0 align-middle">
+								<tbody>
+									<tr>
+										<th scope="row" class="w-25">Age</th>
+										<td>{{ student.age|default_if_none:"-" }}</td>
+									</tr>
+									<tr>
+										<th scope="row">Enrollment Batch</th>
+										<td>{{ student.enrollment_batch|default:"-" }}</td>
+									</tr>
+									<tr>
+										<th scope="row">Faculty</th>
+										<td>{{ student.faculty|default:"-" }}</td>
+									</tr>
+									<tr>
+										<th scope="row">Email</th>
+										<td>{{ student.email|default:"-" }}</td>
+									</tr>
+									<tr>
+										<th scope="row">Enrollment Date</th>
+										<td>{{ student.enrollment_date|date:"F j, Y" }}</td>
+									</tr>
+									<tr>
+										<th scope="row">Address</th>
+										<td>{{ student.address|default:"-" }}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<div class="col-lg-5">
+					<div class="profile-pane bg-light rounded-4 p-4 h-100 text-center">
+						{% if student.dp %}
+							<img class="student-image mb-3" src="{{ student.dp.url }}" alt="{{ student.name }} display picture" onerror="this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');">
+							<div class="profile-placeholder mb-3 d-none">
+								<i class="bi bi-person-badge"></i>
+							</div>
+						{% else %}
+							<div class="profile-placeholder mb-3">
+								<i class="bi bi-person-badge"></i>
+							</div>
+						{% endif %}
+						<p class="text-secondary mb-0">Student record overview</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Teachers | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<span class="eyebrow">Records</span>
+			<h1 class="h2 mb-0">Teachers</h1>
+		</div>
+		<a class="btn btn-primary" href="{% url 'teacher:teacher-create' %}">Add Teacher</a>
+	</div>
+
+	{% if teachers %}
+		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+			<table class="table align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>Name</th>
+						<th>Employee ID</th>
+						<th>Department</th>
+						<th>Faculties</th>
+						<th>Qualification</th>
+						<th>Experience</th>
+						<th>Email</th>
+						<th class="text-end">Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for teacher in teachers %}
+						<tr>
+							<td>{{ teacher.name }}</td>
+							<td>{{ teacher.employee_id|default:"-" }}</td>
+							<td>{{ teacher.department|default:"-" }}</td>
+							<td>
+								{% for faculty in teacher.faculties.all %}
+									{{ faculty.name }}{% if not forloop.last %}, {% endif %}
+								{% empty %}
+									-
+								{% endfor %}
+							</td>
+							<td>{{ teacher.qualification|default:"-" }}</td>
+							<td>{{ teacher.experience_years|default_if_none:"-" }}</td>
+							<td>{{ teacher.email|default:"-" }}</td>
+							<td class="text-end">
+								<div class="action-links">
+									<a href="{% url 'teacher:teacher-detail' teacher.pk %}">View</a>
+									<a href="{% url 'teacher:teacher-update' teacher.pk %}">Edit</a>
+									<a href="{% url 'teacher:teacher-delete' teacher.pk %}">Delete</a>
+								</div>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	{% else %}
+		<div class="empty-state card border-0 shadow-sm">
+			<div class="card-body p-5 text-center">
+				<h2 class="h4">No teachers yet</h2>
+				<p class="text-secondary mb-4">Add the first teacher to start building the record list.</p>
+				<a class="btn btn-primary" href="{% url 'teacher:teacher-create' %}">Create Teacher</a>
+			</div>
+		</div>
+	{% endif %}
+</section>
+{% endblock %}

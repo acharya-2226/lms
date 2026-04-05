@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Students | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<span class="eyebrow">Records</span>
+			<h1 class="h2 mb-0">Students</h1>
+		</div>
+		<a class="btn btn-primary" href="{% url 'student:student-create' %}">Add Student</a>
+	</div>
+
+	{% if students %}
+		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+			<table class="table align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>Name</th>
+						<th>Roll Number</th>
+						<th>Batch</th>
+						<th>Faculty</th>
+						<th>Age</th>
+						<th>Email</th>
+						<th class="text-end">Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for student in students %}
+						<tr>
+							<td>{{ student.name }}</td>
+							<td>{{ student.roll_number }}</td>
+							<td>{{ student.enrollment_batch }}</td>
+							<td>{{ student.faculty }}</td>
+							<td>{{ student.age }}</td>
+							<td>{{ student.email }}</td>
+							<td class="text-end">
+								<div class="action-links">
+									<a href="{% url 'student:student-detail' student.pk %}">View</a>
+									<a href="{% url 'student:student-update' student.pk %}">Edit</a>
+									<a href="{% url 'student:student-delete' student.pk %}">Delete</a>
+								</div>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	{% else %}
+		<div class="empty-state card border-0 shadow-sm">
+			<div class="card-body p-5 text-center">
+				<h2 class="h4">No students yet</h2>
+				<p class="text-secondary mb-4">Add the first student to start building the record list.</p>
+				<a class="btn btn-primary" href="{% url 'student:student-create' %}">Create Student</a>
+			</div>
+		</div>
+	{% endif %}
+</section>
+{% endblock %}

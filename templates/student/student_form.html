@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}
+	{% if object %}Update Student{% else %}Create Student{% endif %} | LMS
+{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0">
+		<div class="card-body p-4 p-lg-5">
+			<span class="eyebrow">Student form</span>
+			<h1 class="h2 mb-4">{% if object %}Update Student{% else %}Create Student{% endif %}</h1>
+			<form method="post" enctype="multipart/form-data" class="stack-form" data-loading-submit>
+				{% csrf_token %}
+				{{ form.as_p }}
+				<div class="d-flex flex-wrap gap-2 mt-4">
+					<button class="btn btn-primary" type="submit">Save</button>
+					<a class="btn btn-outline-secondary" href="{% url 'student:student-list' %}">Cancel</a>
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Home | LMS{% endblock %}
+
+{% block content %}
+<section class="hero-shell">
+	<div class="container py-5 py-lg-6">
+		<div class="row align-items-center g-5">
+			<div class="col-lg-7">
+				<span class="eyebrow">Academic records</span>
+				<h1 class="display-5 fw-bold mb-3">A cleaner workflow for student and teacher records.</h1>
+				<p class="lead text-secondary mb-4">
+					Create, review, update, and delete academic profiles from a simple interface that stays easy to
+					navigate.
+				</p>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-primary btn-lg" href="{% url 'student:student-list' %}">
+						<i class="bi bi-mortarboard-fill me-2" aria-hidden="true"></i>Students
+					</a>
+					<a class="btn btn-outline-primary btn-lg" href="{% url 'teacher:teacher-list' %}">
+						<i class="bi bi-people-fill me-2" aria-hidden="true"></i>Teachers
+					</a>
+				</div>
+			</div>
+			<div class="col-lg-5">
+				<div class="hero-card card border-0 shadow-lg">
+					<div class="card-body p-4 p-lg-5">
+						<h2 class="h4 mb-3">At a glance</h2>
+						<ul class="feature-list list-unstyled mb-0">
+							<li>Fast student CRUD screens</li>
+							<li>Parallel teacher CRUD screens</li>
+							<li>Reusable base layout</li>
+							<li>Responsive Bootstrap components</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}
