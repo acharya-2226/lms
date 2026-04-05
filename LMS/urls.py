@@ -10,8 +10,12 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
     path('student/', RedirectView.as_view(pattern_name='student:student-list', permanent=False)),
     path('teacher/', RedirectView.as_view(pattern_name='teacher:teacher-list', permanent=False)),
+    path('assignment/', RedirectView.as_view(pattern_name='assignment:assignment-list', permanent=False)),
+    path('attendance/', RedirectView.as_view(pattern_name='attendance:attendance-list', permanent=False)),
     path('students/', include('student.urls')),
     path('teachers/', include('teacher.urls')),
+    path('assignments/', include('assignment.urls')),
+    path('attendances/', include('attendance.urls')),
 ]
 
 if settings.DEBUG:

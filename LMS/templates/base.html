@@ -59,6 +59,16 @@
 								href="{% url 'teacher:teacher-list' %}"
 								{% if current_namespace == 'teacher' %}aria-current="page"{% endif %}>Teachers</a>
 						</li>
+						<li class="nav-item">
+							<a class="nav-link {% if current_namespace == 'assignment' %}active{% endif %}"
+								href="{% url 'assignment:assignment-list' %}"
+								{% if current_namespace == 'assignment' %}aria-current="page"{% endif %}>Assignments</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link {% if current_namespace == 'attendance' %}active{% endif %}"
+								href="{% url 'attendance:attendance-list' %}"
+								{% if current_namespace == 'attendance' %}aria-current="page"{% endif %}>Attendance</a>
+						</li>
 					</ul>
 					{% endwith %}
 
@@ -108,6 +118,8 @@
 						<li><a href="{% url 'home' %}">Home</a></li>
 						<li><a href="{% url 'student:student-list' %}">Students</a></li>
 						<li><a href="{% url 'teacher:teacher-list' %}">Teachers</a></li>
+						<li><a href="{% url 'assignment:assignment-list' %}">Assignments</a></li>
+						<li><a href="{% url 'attendance:attendance-list' %}">Attendance</a></li>
 						<li><a href="{% url 'admin:index' %}">Admin</a></li>
 					</ul>
 				</div>

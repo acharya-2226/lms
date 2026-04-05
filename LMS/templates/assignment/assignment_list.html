@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignments | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<span class="eyebrow">Records</span>
+			<h1 class="h2 mb-0">Assignments</h1>
+		</div>
+		<a class="btn btn-primary" href="{% url 'assignment:assignment-create' %}">Add Assignment</a>
+	</div>
+
+	{% if assignments %}
+		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+			<table class="table align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>Title</th>
+						<th>Subject</th>
+						<th>Teacher</th>
+						<th>Faculty</th>
+						<th>Year</th>
+						<th>Due Date</th>
+						<th class="text-end">Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for assignment in assignments %}
+						<tr>
+							<td>{{ assignment.title }}</td>
+							<td>{{ assignment.subject|default:"-" }}</td>
+							<td>{{ assignment.teacher|default:"-" }}</td>
+							<td>{{ assignment.faculty|default:"-" }}</td>
+							<td>{{ assignment.enrollment_batch|default:"-" }}</td>
+							<td>{{ assignment.due_date|date:"F j, Y"|default:"-" }}</td>
+							<td class="text-end">
+								<div class="action-links">
+									<a href="{% url 'assignment:assignment-detail' assignment.pk %}">View</a>
+									<a href="{% url 'assignment:assignment-roster' assignment.pk %}">Roster</a>
+									<a href="{% url 'assignment:assignment-update' assignment.pk %}">Edit</a>
+									<a href="{% url 'assignment:assignment-delete' assignment.pk %}">Delete</a>
+								</div>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	{% else %}
+		<div class="empty-state card border-0 shadow-sm">
+			<div class="card-body p-5 text-center">
+				<h2 class="h4">No assignments yet</h2>
+				<p class="text-secondary mb-4">Create the first assignment targeted to a faculty and year.</p>
+				<a class="btn btn-primary" href="{% url 'assignment:assignment-create' %}">Create Assignment</a>
+			</div>
+		</div>
+	{% endif %}
+</section>
+{% endblock %}

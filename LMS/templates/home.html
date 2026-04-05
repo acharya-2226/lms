@@ -20,6 +20,12 @@
 					<a class="btn btn-outline-primary btn-lg" href="{% url 'teacher:teacher-list' %}">
 						<i class="bi bi-people-fill me-2" aria-hidden="true"></i>Teachers
 					</a>
+					<a class="btn btn-outline-primary btn-lg" href="{% url 'assignment:assignment-list' %}">
+						<i class="bi bi-journal-text me-2" aria-hidden="true"></i>Assignments
+					</a>
+					<a class="btn btn-outline-primary btn-lg" href="{% url 'attendance:attendance-list' %}">
+						<i class="bi bi-calendar-check me-2" aria-hidden="true"></i>Attendance
+					</a>
 				</div>
 			</div>
 			<div class="col-lg-5">
@@ -29,6 +35,8 @@
 						<ul class="feature-list list-unstyled mb-0">
 							<li>Fast student CRUD screens</li>
 							<li>Parallel teacher CRUD screens</li>
+							<li>Assignment groups by faculty and year</li>
+							<li>Attendance tracking by faculty and year</li>
 							<li>Reusable base layout</li>
 							<li>Responsive Bootstrap components</li>
 						</ul>

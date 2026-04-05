@@ -16,6 +16,14 @@ class EnrollmentYear(models.Model):
         return str(self.year)
 
 
+class Subject(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    code = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None)
+
+    def __str__(self):
+        return self.name
+
+
 class Student(models.Model):
 
     name = models.CharField(max_length=100)

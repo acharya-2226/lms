@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Roster | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0 overflow-hidden">
+		<div class="card-body p-4 p-lg-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+				<div>
+					<span class="eyebrow">Attendance tracking</span>
+					<h1 class="h2 mb-1">{{ attendance.title }}</h1>
+					<p class="text-secondary mb-0">Faculty {{ attendance.faculty|default:"-" }} | Year {{ attendance.enrollment_batch|default:"-" }}</p>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-detail' attendance.pk %}">Back to Attendance</a>
+				</div>
+			</div>
+
+			{% if entries %}
+				<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+					<table class="table align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Student</th>
+								<th>Roll Number</th>
+								<th>Status</th>
+								<th class="text-end">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for entry in entries %}
+								<tr>
+									<td>{{ entry.student.name }}</td>
+									<td>{{ entry.student.roll_number|default:"-" }}</td>
+									<td>
+										{% if entry.status == 'present' %}
+											<span class="badge text-bg-success">Present</span>
+										{% elif entry.status == 'absent' %}
+											<span class="badge text-bg-danger">Absent</span>
+										{% else %}
+											<span class="badge text-bg-secondary">Unmarked</span>
+										{% endif %}
+									</td>
+									<td class="text-end">
+										<form method="post" class="d-inline" data-loading-submit>
+											{% csrf_token %}
+											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
+											<input type="hidden" name="status" value="present">
+											<button class="btn btn-sm btn-success" type="submit">Present</button>
+										</form>
+										<form method="post" class="d-inline ms-2" data-loading-submit>
+											{% csrf_token %}
+											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
+											<input type="hidden" name="status" value="absent">
+											<button class="btn btn-sm btn-danger" type="submit">Absent</button>
+										</form>
+										<form method="post" class="d-inline ms-2" data-loading-submit>
+											{% csrf_token %}
+											<input type="hidden" name="entry_id" value="{{ entry.pk }}">
+											<input type="hidden" name="status" value="unmarked">
+											<button class="btn btn-sm btn-outline-secondary" type="submit">Reset</button>
+										</form>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% else %}
+				<div class="empty-state card border-0 shadow-sm">
+					<div class="card-body p-5 text-center">
+						<h2 class="h4">No matching students yet</h2>
+						<p class="text-secondary mb-4">The roster appears when faculty and enrollment year are both set and matching students exist.</p>
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	</div>
+</section>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignment Roster | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0 overflow-hidden">
+		<div class="card-body p-4 p-lg-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+				<div>
+					<span class="eyebrow">Recipient tracking</span>
+					<h1 class="h2 mb-1">{{ assignment.title }}</h1>
+					<p class="text-secondary mb-0">
+						Faculty {{ assignment.faculty|default:"-" }} | Year {{ assignment.enrollment_batch|default:"-" }}
+					</p>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-primary" href="{% url 'assignment:assignment-detail' assignment.pk %}">Back to Assignment</a>
+				</div>
+			</div>
+
+			{% if recipients %}
+				<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+					<table class="table align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Student</th>
+								<th>Roll Number</th>
+								<th>Notified</th>
+								<th>Seen</th>
+								<th>Submitted</th>
+								<th class="text-end">Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for recipient in recipients %}
+								<tr>
+									<td>{{ recipient.student.name }}</td>
+									<td>{{ recipient.student.roll_number|default:"-" }}</td>
+									<td>
+										{% if recipient.is_notified %}
+											<span class="badge text-bg-success">Notified</span>
+										{% else %}
+											<span class="badge text-bg-secondary">Not viewed</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if recipient.is_seen %}
+											<span class="badge text-bg-primary">Seen</span>
+										{% else %}
+											<span class="badge text-bg-light">Pending</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if recipient.is_submitted %}
+											<span class="badge text-bg-success">Submitted</span>
+										{% else %}
+											<span class="badge text-bg-warning">Not submitted</span>
+										{% endif %}
+									</td>
+									<td class="text-end">
+										<form method="post" class="d-inline" data-loading-submit>
+											{% csrf_token %}
+											<input type="hidden" name="recipient_id" value="{{ recipient.pk }}">
+											{% if recipient.is_notified %}
+												<button class="btn btn-sm btn-outline-success" type="button" disabled>Notified</button>
+											{% else %}
+												<button class="btn btn-sm btn-primary" type="submit">Mark Notified</button>
+											{% endif %}
+										</form>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% else %}
+				<div class="empty-state card border-0 shadow-sm">
+					<div class="card-body p-5 text-center">
+						<h2 class="h4">No matching students yet</h2>
+						<p class="text-secondary mb-4">The roster appears when faculty and enrollment year are both set and matching students exist.</p>
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	</div>
+</section>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Details | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0 overflow-hidden">
+		<div class="card-body p-4 p-lg-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+				<div>
+					<span class="eyebrow">Attendance profile</span>
+					<h1 class="h2 mb-1">{{ attendance.title }}</h1>
+					<p class="text-secondary mb-0">Subject {{ attendance.subject|default:"-" }} | Teacher {{ attendance.teacher|default:"-" }} | Faculty {{ attendance.faculty|default:"-" }} | Year {{ attendance.enrollment_batch|default:"-" }}</p>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-update' attendance.pk %}">Edit</a>
+					<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-roster' attendance.pk %}">Roster</a>
+					<a class="btn btn-outline-danger" href="{% url 'attendance:attendance-delete' attendance.pk %}">Delete</a>
+					<a class="btn btn-primary" href="{% url 'attendance:attendance-list' %}">Back to List</a>
+				</div>
+			</div>
+
+			<div class="detail-pane bg-light rounded-4 p-4 h-100">
+				<div class="table-responsive">
+					<table class="table table-striped mb-0 align-middle">
+						<tbody>
+							<tr>
+								<th scope="row" class="w-25">Note</th>
+								<td>{{ attendance.note|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Attendance Date</th>
+								<td>{{ attendance.attendance_date|date:"F j, Y" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Created</th>
+								<td>{{ attendance.created_at|date:"F j, Y, g:i a" }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}

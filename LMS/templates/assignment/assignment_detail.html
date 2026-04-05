@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Assignment Details | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0 overflow-hidden">
+		<div class="card-body p-4 p-lg-5">
+			<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+				<div>
+					<span class="eyebrow">Assignment profile</span>
+					<h1 class="h2 mb-1">{{ assignment.title }}</h1>
+					<p class="text-secondary mb-0">Subject {{ assignment.subject|default:"-" }} | Teacher {{ assignment.teacher|default:"-" }} | Faculty {{ assignment.faculty|default:"-" }} | Year {{ assignment.enrollment_batch|default:"-" }}</p>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-outline-primary" href="{% url 'assignment:assignment-update' assignment.pk %}">Edit</a>
+					<a class="btn btn-outline-secondary" href="{% url 'assignment:assignment-roster' assignment.pk %}">Roster</a>
+					<a class="btn btn-outline-danger" href="{% url 'assignment:assignment-delete' assignment.pk %}">Delete</a>
+					<a class="btn btn-primary" href="{% url 'assignment:assignment-list' %}">Back to List</a>
+				</div>
+			</div>
+
+			<div class="detail-pane bg-light rounded-4 p-4 h-100">
+				<div class="table-responsive">
+					<table class="table table-striped mb-0 align-middle">
+						<tbody>
+							<tr>
+								<th scope="row" class="w-25">Description</th>
+								<td>{{ assignment.description|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Subject</th>
+								<td>{{ assignment.subject|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Teacher</th>
+								<td>{{ assignment.teacher|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Attachment</th>
+								<td>
+									{% if assignment.attachment %}
+										<a href="{{ assignment.attachment.url }}" target="_blank" rel="noopener">Download</a>
+									{% else %}
+										-
+									{% endif %}
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">Due Date</th>
+								<td>{{ assignment.due_date|date:"F j, Y"|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Created</th>
+								<td>{{ assignment.created_at|date:"F j, Y, g:i a" }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}

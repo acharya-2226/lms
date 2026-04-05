@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EnrollmentYear, Faculty, Student
+from .models import EnrollmentYear, Faculty, Student, Subject
 # Register your models here.
 
 
@@ -13,6 +13,12 @@ class FacultyAdmin(admin.ModelAdmin):
 class EnrollmentYearAdmin(admin.ModelAdmin):
     list_display = ('year',)
     search_fields = ('year',)
+
+
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code')
+    search_fields = ('name', 'code')
 
 
 @admin.register(Student)
