@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}
+	{% if object %}Update Weekly Schedule{% else %}Create Weekly Schedule{% endif %} | LMS
+{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="card shadow-sm border-0">
+		<div class="card-body p-4 p-lg-5">
+			<span class="eyebrow">Admin scheduling</span>
+			<h1 class="h2 mb-4">{% if object %}Update Weekly Schedule{% else %}Create Weekly Schedule{% endif %}</h1>
+			<p class="text-secondary mb-4">These recurring classes auto-create attendance entries for today and past dates.</p>
+			<form method="post" class="stack-form" data-loading-submit>
+				{% csrf_token %}
+				{{ form.as_p }}
+				<div class="d-flex flex-wrap gap-2 mt-4">
+					<button class="btn btn-primary" type="submit">Save</button>
+					{% if return_to_timetable %}
+					<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-timetable' %}?faculty={{ faculty_id }}&year={{ year_id }}">Cancel</a>
+					{% else %}
+					<a class="btn btn-outline-secondary" href="{% url 'attendance:weekly-schedule-list' %}">Cancel</a>
+					{% endif %}
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		// Disable fields that were pre-filled from timetable
+		const queryParams = new URLSearchParams(window.location.search);
+		const dayParam = queryParams.get('day');
+		const timeslotParam = queryParams.get('timeslot_id');
+		const facultyParam = queryParams.get('faculty_id');
+		const yearParam = queryParams.get('year_id');
+
+		if (dayParam) {
+			const dayField = document.querySelector('select[name="day_of_week"]');
+			if (dayField) {
+				dayField.disabled = true;
+				dayField.title = 'This field is locked from the timetable selection';
+			}
+		}
+
+		if (timeslotParam) {
+			const slotField = document.querySelector('select[name="timeslot"]');
+			if (slotField) {
+				slotField.disabled = true;
+				slotField.title = 'This field is locked from the timetable selection';
+			}
+		}
+
+		if (facultyParam) {
+			const facultyField = document.querySelector('select[name="faculty"]');
+			if (facultyField) {
+				facultyField.disabled = true;
+				facultyField.title = 'This field is locked from the timetable selection';
+			}
+		}
+
+		if (yearParam) {
+			const yearField = document.querySelector('select[name="enrollment_batch"]');
+			if (yearField) {
+				yearField.disabled = true;
+				yearField.title = 'This field is locked from the timetable selection';
+			}
+		}
+	});
+</script>
+
+<style>
+	select:disabled {
+		background-color: #f0f0f0;
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+</style>
+{% endblock %}

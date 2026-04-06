@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Weekly Schedules | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<span class="eyebrow">Admin Scheduling</span>
+			<h1 class="h2 mb-0">Weekly Class Schedules</h1>
+		</div>
+		<div class="d-flex flex-wrap gap-2">
+			<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-timetable' %}">View Timetable</a>
+			<a class="btn btn-primary" href="{% url 'attendance:weekly-schedule-create' %}">Add Weekly Schedule</a>
+		</div>
+	</div>
+
+	{% if schedules %}
+	<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+		<table class="table table-compact align-middle mb-0">
+			<thead class="table-light">
+				<tr>
+					<th>Subject</th>
+					<th>Teacher</th>
+					<th>Faculty</th>
+					<th>Year</th>
+					<th>Day</th>
+					<th>Timeslot</th>
+					<th>Start</th>
+					<th>End</th>
+					<th>Status</th>
+					<th class="text-end">Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for schedule in schedules %}
+				<tr>
+					<td>{{ schedule.subject|default:"-" }}</td>
+					<td>{{ schedule.teacher|default:"-" }}</td>
+					<td>{{ schedule.faculty|default:"-" }}</td>
+					<td>{{ schedule.enrollment_batch|default:"-" }}</td>
+					<td>{{ schedule.get_day_of_week_display }}</td>
+					<td>{{ schedule.timeslot.display_label|default:"-" }}</td>
+					<td>{{ schedule.start_date|date:"F j, Y" }}</td>
+					<td>{{ schedule.end_date|date:"F j, Y"|default:"-" }}</td>
+					<td>
+						{% if schedule.is_active %}
+						<span class="badge text-bg-success">Active</span>
+						{% else %}
+						<span class="badge text-bg-secondary">Inactive</span>
+						{% endif %}
+					</td>
+					<td class="text-end">
+						<div class="action-links">
+							<a href="{% url 'attendance:weekly-schedule-update' schedule.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
+							<a href="{% url 'attendance:weekly-schedule-delete' schedule.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
+						</div>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% else %}
+	<div class="empty-state card border-0 shadow-sm">
+		<div class="card-body p-5 text-center">
+			<h2 class="h4">No weekly schedules yet</h2>
+			<p class="text-secondary mb-4">Create schedules and attendance will auto-generate for today and past dates.</p>
+			<a class="btn btn-primary" href="{% url 'attendance:weekly-schedule-create' %}">Create Weekly Schedule</a>
+		</div>
+	</div>
+	{% endif %}
+</section>
+{% endblock %}

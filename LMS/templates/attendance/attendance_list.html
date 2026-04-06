@@ -12,6 +12,9 @@
 		<div class="d-flex flex-wrap gap-2">
 			<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-report' %}">Attendance Report</a>
 			<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-timetable' %}">Timetable</a>
+			{% if is_admin_like_user %}
+			<a class="btn btn-outline-dark" href="{% url 'attendance:weekly-schedule-list' %}">Weekly Schedules</a>
+			{% endif %}
 			{% if can_manage_academic_records %}
 			<a class="btn btn-primary" href="{% url 'attendance:attendance-create' %}">Add Attendance</a>
 			{% endif %}
@@ -42,11 +45,7 @@
 							<td>{{ attendance.faculty|default:"-" }}</td>
 							<td>{{ attendance.enrollment_batch|default:"-" }}</td>
 							<td>
-								{% if attendance.start_time and attendance.end_time %}
-								{{ attendance.start_time|time:"g:i a" }} - {{ attendance.end_time|time:"g:i a" }}
-								{% else %}
-								-
-								{% endif %}
+								{{ attendance.slot_display }}
 							</td>
 							<td>{{ attendance.attendance_date|date:"F j, Y" }}</td>
 							<td class="text-end">

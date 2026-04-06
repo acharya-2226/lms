@@ -49,6 +49,16 @@ class Assignment(models.Model):
 
 
 class AssignmentRecipient(models.Model):
+    SUBMISSION_PENDING = 'pending'
+    SUBMISSION_SUBMITTED = 'submitted'
+    SUBMISSION_RESUBMITTED = 'resubmitted'
+
+    SUBMISSION_CHOICES = [
+        (SUBMISSION_PENDING, 'Pending'),
+        (SUBMISSION_SUBMITTED, 'Submitted'),
+        (SUBMISSION_RESUBMITTED, 'Resubmitted'),
+    ]
+
     assignment = models.ForeignKey(
         Assignment,
         on_delete=models.CASCADE,
@@ -63,6 +73,7 @@ class AssignmentRecipient(models.Model):
     notified_at = models.DateTimeField(null=True, blank=True, default=None)
     is_seen = models.BooleanField(default=False)
     seen_at = models.DateTimeField(null=True, blank=True, default=None)
+    submission_status = models.CharField(max_length=20, choices=SUBMISSION_CHOICES, default=SUBMISSION_PENDING)
     is_submitted = models.BooleanField(default=False)
     submitted_at = models.DateTimeField(null=True, blank=True, default=None)
     submission_file = models.FileField(
@@ -77,3 +88,20 @@ class AssignmentRecipient(models.Model):
 
     def __str__(self):
         return f'{self.assignment} - {self.student}'
+
+    def save(self, *args, **kwargs):
+        if self.is_submitted:
+            if self.submission_status == self.SUBMISSION_PENDING:
+                previous = None
+                if self.pk:
+                    previous = AssignmentRecipient.objects.filter(pk=self.pk).values('submission_status', 'is_submitted').first()
+
+                if previous and (previous['is_submitted'] or previous['submission_status'] != self.SUBMISSION_PENDING):
+                    self.submission_status = self.SUBMISSION_RESUBMITTED
+                else:
+                    self.submission_status = self.SUBMISSION_SUBMITTED
+        else:
+            self.submission_status = self.SUBMISSION_PENDING
+
+        self.is_submitted = self.submission_status != self.SUBMISSION_PENDING
+        super().save(*args, **kwargs)

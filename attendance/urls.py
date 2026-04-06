@@ -10,12 +10,20 @@ from .views import (
     AttendanceRosterView,
     AttendanceTimetableView,
     AttendanceUpdateView,
+    WeeklyScheduleCreateView,
+    WeeklyScheduleDeleteView,
+    WeeklyScheduleListView,
+    WeeklyScheduleUpdateView,
 )
 
 app_name = 'attendance'
 
 urlpatterns = [
     path('', AttendanceListView.as_view(), name='attendance-list'),
+    path('weekly-schedules/', WeeklyScheduleListView.as_view(), name='weekly-schedule-list'),
+    path('weekly-schedules/create/', WeeklyScheduleCreateView.as_view(), name='weekly-schedule-create'),
+    path('weekly-schedules/<int:pk>/update/', WeeklyScheduleUpdateView.as_view(), name='weekly-schedule-update'),
+    path('weekly-schedules/<int:pk>/delete/', WeeklyScheduleDeleteView.as_view(), name='weekly-schedule-delete'),
     path('report/', AttendanceReportView.as_view(), name='attendance-report'),
     path('report/download/', AttendanceReportDownloadView.as_view(), name='attendance-report-download'),
     path('timetable/', AttendanceTimetableView.as_view(), name='attendance-timetable'),

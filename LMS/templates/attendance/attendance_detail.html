@@ -32,13 +32,7 @@
 							</tr>
 							<tr>
 								<th scope="row">Timeslot</th>
-								<td>
-									{% if attendance.start_time and attendance.end_time %}
-									{{ attendance.start_time|time:"g:i a" }} - {{ attendance.end_time|time:"g:i a" }}
-									{% else %}
-									-
-									{% endif %}
-								</td>
+								<td>{{ attendance.slot_display }}</td>
 							</tr>
 							<tr>
 								<th scope="row">Attendance Date</th>

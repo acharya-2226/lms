@@ -1,28 +1,28 @@
+from LMS.roles import (
+    can_manage_academic_records,
+    get_logged_in_name,
+    get_student_profile,
+    get_teacher_profile,
+    is_admin_user,
+)
+
+
 def role_flags(request):
     user = request.user
-    is_authenticated = bool(user and user.is_authenticated)
-    is_student = is_authenticated and hasattr(user, 'student_profile')
-    is_teacher = is_authenticated and hasattr(user, 'teacher_profile')
-    is_admin_like = is_authenticated and (user.is_staff or user.is_superuser)
-
-    display_name = ''
-    if is_authenticated:
-        profile_name = ''
-        if is_student:
-            profile_name = (user.student_profile.name or '').strip()
-        elif is_teacher:
-            profile_name = (user.teacher_profile.name or '').strip()
-        if profile_name:
-            display_name = profile_name.split()[0]
-        elif (user.first_name or '').strip():
-            display_name = user.first_name.strip().split()[0]
-        else:
-            display_name = user.username
+    student_profile = get_student_profile(user)
+    teacher_profile = get_teacher_profile(user)
+    admin_user = is_admin_user(user)
 
     return {
-        'is_student_user': is_student,
-        'is_teacher_user': is_teacher,
-        'is_admin_like_user': is_admin_like,
-        'can_manage_academic_records': is_teacher or is_admin_like,
-        'current_user_display_name': display_name,
+        'has_student_profile': bool(student_profile),
+        'has_teacher_profile': bool(teacher_profile),
+        'is_admin': admin_user,
+        'logged_in_name': get_logged_in_name(user),
+        'current_student': student_profile,
+        'current_teacher': teacher_profile,
+        'can_manage_academic_records': can_manage_academic_records(user),
+        'is_student_user': bool(student_profile),
+        'is_teacher_user': bool(teacher_profile),
+        'is_admin_like_user': admin_user,
+        'current_user_display_name': get_logged_in_name(user),
     }

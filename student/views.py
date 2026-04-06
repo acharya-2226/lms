@@ -12,28 +12,37 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from django.utils.decorators import method_decorator
 from openpyxl import Workbook, load_workbook
 
+from LMS.roles import get_logged_in_name, get_student_profile, get_teacher_profile, is_admin_user
+from LMS.views import access_denied_response
 from .models import EnrollmentYear, Faculty, Student
 from .forms import FirstLoginPasswordChangeForm
-from LMS.views import access_denied_response
 
 
-class NonStudentAccessRequiredMixin:
+class AdminOnlyMixin:
     def dispatch(self, request, *args, **kwargs):
-        if hasattr(request.user, 'student_profile') and not (request.user.is_staff or request.user.is_superuser):
-            return access_denied_response(request, 'Student accounts cannot access student management pages.')
+        if not is_admin_user(request.user):
+            return access_denied_response(request, 'Only administrators can access this page.')
         return super().dispatch(request, *args, **kwargs)
 
-class StudentListView(LoginRequiredMixin, NonStudentAccessRequiredMixin, ListView):
+
+class StudentListView(LoginRequiredMixin, ListView):
     model = Student
     template_name = 'student/student_list.html'
     context_object_name = 'students'
 
     def get_queryset(self):
-        return Student.objects.select_related('faculty', 'enrollment_batch').order_by(
+        user = self.request.user
+        queryset = Student.objects.select_related('faculty', 'enrollment_batch').order_by(
             'faculty__name',
             'enrollment_batch__year',
             'name',
         )
+        if is_admin_user(user):
+            return queryset
+        teacher = get_teacher_profile(user)
+        if teacher:
+            return queryset.filter(faculty__in=teacher.faculties.all()).distinct()
+        return queryset.none()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -62,31 +71,46 @@ class StudentListView(LoginRequiredMixin, NonStudentAccessRequiredMixin, ListVie
         ]
         return context
 
-class StudentDetailView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DetailView):
+class StudentDetailView(LoginRequiredMixin, DetailView):
     model = Student
     template_name = 'student/student_detail.html'
     context_object_name = 'student'
-    queryset = Student.objects.all()
 
-class StudentCreateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, CreateView):
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Student.objects.select_related('faculty', 'enrollment_batch', 'user')
+        if is_admin_user(user):
+            return queryset
+
+        student = get_student_profile(user)
+        if student:
+            return queryset.filter(pk=student.pk)
+
+        teacher = get_teacher_profile(user)
+        if teacher:
+            return queryset.filter(faculty__in=teacher.faculties.all()).distinct()
+
+        return queryset.none()
+
+class StudentCreateView(LoginRequiredMixin, AdminOnlyMixin, CreateView):
     model = Student
     template_name = 'student/student_form.html'
     fields = ['name', 'roll_number', 'enrollment_batch', 'faculty', 'age', 'email', 'dp', 'address']
     success_url = reverse_lazy('student:student-create')
 
-class StudentUpdateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, UpdateView):
+class StudentUpdateView(LoginRequiredMixin, AdminOnlyMixin, UpdateView):
     model = Student
     template_name = 'student/student_form.html'
     fields = ['name', 'roll_number', 'enrollment_batch', 'faculty', 'age', 'email', 'dp', 'address']
     success_url = reverse_lazy('student:student-list')
 
-class StudentDeleteView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DeleteView):
+class StudentDeleteView(LoginRequiredMixin, AdminOnlyMixin, DeleteView):
     model = Student
     template_name = 'student/student_confirm_delete.html'
     success_url = reverse_lazy('student:student-list')
 
 
-class StudentImportView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
+class StudentImportView(LoginRequiredMixin, AdminOnlyMixin, View):
     template_name = 'student/student_import.html'
 
     def get(self, request):
@@ -192,7 +216,7 @@ class StudentImportView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View)
         return redirect('student:student-list')
 
 
-class StudentImportTemplateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
+class StudentImportTemplateView(LoginRequiredMixin, AdminOnlyMixin, View):
     def get(self, request):
         workbook = Workbook()
         worksheet = workbook.active

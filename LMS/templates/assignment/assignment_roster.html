@@ -52,7 +52,9 @@
 										{% endif %}
 									</td>
 									<td>
-										{% if recipient.is_submitted %}
+										{% if recipient.submission_status == 'resubmitted' %}
+											<span class="badge text-bg-info">Resubmitted</span>
+										{% elif recipient.is_submitted %}
 											<span class="badge text-bg-success">Submitted</span>
 										{% else %}
 											<span class="badge text-bg-warning">Not submitted</span>

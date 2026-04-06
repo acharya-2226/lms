@@ -12,6 +12,6 @@ class AssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(AssignmentRecipient)
 class AssignmentRecipientAdmin(admin.ModelAdmin):
-    list_display = ('assignment', 'student', 'is_notified', 'is_seen', 'is_submitted', 'notified_at', 'seen_at', 'submitted_at')
+    list_display = ('assignment', 'student', 'submission_status', 'is_notified', 'is_seen', 'is_submitted', 'notified_at', 'seen_at', 'submitted_at')
     search_fields = ('assignment__title', 'student__name', 'student__roll_number')
-    list_filter = ('is_notified', 'is_seen', 'is_submitted', 'assignment')
+    list_filter = ('submission_status', 'is_notified', 'is_seen', 'is_submitted', 'assignment')

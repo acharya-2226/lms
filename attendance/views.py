@@ -20,10 +20,82 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from student.models import Student, Subject
+from student.models import EnrollmentYear, Faculty, Student, Subject
+from LMS.roles import is_admin_user
 from LMS.views import access_denied_response
 
-from .models import Attendance, AttendanceEntry
+from .models import Attendance, AttendanceEntry, TimeSlot, WeeklyClassSchedule
+
+
+WEEKDAY_INDEX = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6,
+}
+
+
+def get_accessible_schedule_queryset(user):
+    schedules = WeeklyClassSchedule.objects.filter(is_active=True).select_related(
+        'subject', 'teacher', 'faculty', 'enrollment_batch', 'timeslot'
+    )
+
+    if is_admin_user(user):
+        return schedules
+
+    student_profile = getattr(user, 'student_profile', None)
+    if student_profile:
+        return schedules.filter(
+            faculty=student_profile.faculty,
+            enrollment_batch=student_profile.enrollment_batch,
+        )
+
+    teacher_profile = getattr(user, 'teacher_profile', None)
+    if teacher_profile:
+        return schedules.filter(
+            Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
+        ).distinct()
+
+    return schedules.none()
+
+
+def sync_attendance_from_schedules(user, until_date):
+    schedules = get_accessible_schedule_queryset(user)
+
+    for schedule in schedules:
+        if not all([schedule.subject, schedule.faculty, schedule.enrollment_batch, schedule.timeslot, schedule.start_date]):
+            continue
+
+        day_index = WEEKDAY_INDEX.get(schedule.day_of_week)
+        if day_index is None:
+            continue
+
+        range_end = min(until_date, schedule.end_date) if schedule.end_date else until_date
+        if schedule.start_date > range_end:
+            continue
+
+        days_ahead = (day_index - schedule.start_date.weekday()) % 7
+        current_date = schedule.start_date + timedelta(days=days_ahead)
+
+        while current_date <= range_end:
+            attendance, _ = Attendance.objects.get_or_create(
+                subject=schedule.subject,
+                teacher=schedule.teacher,
+                faculty=schedule.faculty,
+                enrollment_batch=schedule.enrollment_batch,
+                timeslot=schedule.timeslot,
+                attendance_date=current_date,
+                defaults={
+                    'note': schedule.note,
+                },
+            )
+            if not attendance.note and schedule.note:
+                attendance.note = schedule.note
+                attendance.save(update_fields=['note'])
+            current_date += timedelta(days=7)
 
 
 def seed_attendance_entries(attendance):
@@ -44,12 +116,14 @@ def seed_attendance_entries(attendance):
 class AttendanceForm(forms.ModelForm):
     class Meta:
         model = Attendance
-        fields = ['subject', 'teacher', 'faculty', 'enrollment_batch', 'attendance_date', 'start_time', 'end_time', 'note']
+        fields = ['subject', 'teacher', 'faculty', 'enrollment_batch', 'attendance_date', 'timeslot', 'note']
         widgets = {
             'attendance_date': forms.DateInput(attrs={'type': 'date'}),
-            'start_time': forms.TimeInput(attrs={'type': 'time'}),
-            'end_time': forms.TimeInput(attrs={'type': 'time'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['timeslot'].queryset = TimeSlot.objects.order_by('display_order', 'start_time', 'id')
 
     def clean(self):
         cleaned_data = super().clean()
@@ -57,25 +131,25 @@ class AttendanceForm(forms.ModelForm):
         faculty = cleaned_data.get('faculty')
         enrollment_batch = cleaned_data.get('enrollment_batch')
         attendance_date = cleaned_data.get('attendance_date')
-        start_time = cleaned_data.get('start_time')
-        end_time = cleaned_data.get('end_time')
+        timeslot = cleaned_data.get('timeslot')
 
-        if start_time and end_time and start_time >= end_time:
-            raise forms.ValidationError('Start time must be before end time.')
+        if attendance_date and attendance_date > timezone.localdate():
+            raise forms.ValidationError('Attendance for future dates cannot be created yet.')
 
-        if subject and faculty and enrollment_batch and attendance_date:
+        if subject and faculty and enrollment_batch and attendance_date and timeslot:
             duplicate_exists = Attendance.objects.filter(
                 subject=subject,
                 faculty=faculty,
                 enrollment_batch=enrollment_batch,
                 attendance_date=attendance_date,
+                timeslot=timeslot,
             )
             if self.instance.pk:
                 duplicate_exists = duplicate_exists.exclude(pk=self.instance.pk)
 
             if duplicate_exists.exists():
                 raise forms.ValidationError(
-                    'An attendance record for this subject, faculty, enrollment year, and date already exists.'
+                    'An attendance record for this subject, faculty, year, date, and timeslot already exists.'
                 )
 
         return cleaned_data
@@ -90,12 +164,15 @@ class AttendanceReportForm(forms.Form):
 class RoleFilteredAttendanceQuerysetMixin:
     def get_base_queryset(self):
         return Attendance.objects.select_related(
-            'subject', 'teacher', 'faculty', 'enrollment_batch'
+            'subject', 'teacher', 'faculty', 'enrollment_batch', 'timeslot'
         ).prefetch_related('entries__student')
 
     def get_role_filtered_queryset(self):
+        sync_attendance_from_schedules(self.request.user, timezone.localdate())
         queryset = self.get_base_queryset()
         user = self.request.user
+
+        queryset = queryset.filter(attendance_date__lte=timezone.localdate())
 
         if user.is_superuser or user.is_staff:
             return queryset
@@ -167,6 +244,8 @@ class AttendanceRosterView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMix
         self.object = self.get_object()
         if not (request.user.is_superuser or request.user.is_staff or hasattr(request.user, 'teacher_profile')):
             return access_denied_response(request, 'Only teachers and admins can view attendance rosters.')
+        if request.method == 'POST' and self.object.attendance_date > timezone.localdate():
+            return access_denied_response(request, 'Attendance can only be edited on its date or after the date arrives.')
         self.ensure_entries_exist()
         if request.method == 'POST':
             return self.handle_post(request)
@@ -226,6 +305,12 @@ class AttendanceUpdateView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, Role
     form_class = AttendanceForm
     success_url = reverse_lazy('attendance:attendance-list')
 
+    def dispatch(self, request, *args, **kwargs):
+        attendance = self.get_object()
+        if attendance.attendance_date > timezone.localdate():
+            return access_denied_response(request, 'Future attendance records cannot be edited yet.')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = self.get_role_filtered_queryset()
         user = self.request.user
@@ -243,6 +328,12 @@ class AttendanceDeleteView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, Role
     model = Attendance
     template_name = 'attendance/attendance_confirm_delete.html'
     success_url = reverse_lazy('attendance:attendance-list')
+
+    def dispatch(self, request, *args, **kwargs):
+        attendance = self.get_object()
+        if attendance.attendance_date > timezone.localdate():
+            return access_denied_response(request, 'Future attendance records cannot be deleted yet.')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = self.get_role_filtered_queryset()
@@ -441,24 +532,227 @@ class AttendanceReportDownloadView(LoginRequiredMixin, RoleFilteredAttendanceQue
         return response
 
 
-class AttendanceTimetableView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, ListView):
-    model = Attendance
-    template_name = 'attendance/attendance_timetable.html'
-    context_object_name = 'attendances'
-    WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'unscheduled']
+class AdminOnlyMixin(UserPassesTestMixin):
+    def test_func(self):
+        return is_admin_user(self.request.user)
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            return access_denied_response(self.request, 'Only administrators can access this module.')
+        return super().handle_no_permission()
+
+
+class WeeklyScheduleForm(forms.ModelForm):
+    class Meta:
+        model = WeeklyClassSchedule
+        fields = [
+            'subject',
+            'teacher',
+            'faculty',
+            'enrollment_batch',
+            'day_of_week',
+            'timeslot',
+            'start_date',
+            'end_date',
+            'note',
+            'is_active',
+        ]
+        widgets = {
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['timeslot'].queryset = TimeSlot.objects.order_by('display_order', 'start_time', 'id')
+
+
+class WeeklyScheduleListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = WeeklyClassSchedule
+    template_name = 'attendance/weekly_schedule_list.html'
+    context_object_name = 'schedules'
 
     def get_queryset(self):
-        return self.get_role_filtered_queryset().order_by('attendance_date', 'start_time', 'title')
+        return WeeklyClassSchedule.objects.select_related(
+            'subject', 'teacher', 'faculty', 'enrollment_batch', 'timeslot'
+        ).order_by('faculty__name', 'enrollment_batch__year', 'day_of_week', 'timeslot__display_order', 'timeslot__start_time')
+
+
+class WeeklyScheduleCreateView(LoginRequiredMixin, AdminOnlyMixin, CreateView):
+    model = WeeklyClassSchedule
+    template_name = 'attendance/weekly_schedule_form.html'
+    form_class = WeeklyScheduleForm
+
+    def get_success_url(self):
+        # If coming from timetable, go back to timetable
+        if self.request.GET.get('day'):
+            faculty_id = self.request.GET.get('faculty_id', '')
+            year_id = self.request.GET.get('year_id', '')
+            return f"{reverse_lazy('attendance:attendance-timetable')}?faculty={faculty_id}&year={year_id}"
+        return reverse_lazy('attendance:weekly-schedule-list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        faculty_id = self.request.GET.get('faculty_id')
+        year_id = self.request.GET.get('year_id')
+        day = self.request.GET.get('day')
+        timeslot_id = self.request.GET.get('timeslot_id')
+
+        if faculty_id:
+            initial['faculty'] = faculty_id
+        if year_id:
+            initial['enrollment_batch'] = year_id
+        if day:
+            initial['day_of_week'] = day
+        if timeslot_id:
+            initial['timeslot'] = timeslot_id
+
+        return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        grouped = OrderedDict((day, []) for day in self.WEEKDAY_ORDER)
-        for attendance in context['attendances']:
-            day_key = attendance.day_of_week or 'unscheduled'
-            grouped.setdefault(day_key, []).append(attendance)
-        context['grouped_attendances'] = OrderedDict(
-            (day, items) for day in self.WEEKDAY_ORDER for items in [grouped.get(day, [])] if items
-        )
+        # Pass query params to template for back button
+        context['faculty_id'] = self.request.GET.get('faculty_id', '')
+        context['year_id'] = self.request.GET.get('year_id', '')
+        context['day'] = self.request.GET.get('day', '')
+        context['timeslot_id'] = self.request.GET.get('timeslot_id', '')
+        context['return_to_timetable'] = bool(self.request.GET.get('day'))
+        return context
+
+
+class WeeklyScheduleUpdateView(LoginRequiredMixin, AdminOnlyMixin, UpdateView):
+    model = WeeklyClassSchedule
+    template_name = 'attendance/weekly_schedule_form.html'
+    form_class = WeeklyScheduleForm
+
+    def get_success_url(self):
+        # If coming from timetable, go back to timetable
+        if self.request.GET.get('day'):
+            faculty_id = self.request.GET.get('faculty_id', '')
+            year_id = self.request.GET.get('year_id', '')
+            return f"{reverse_lazy('attendance:attendance-timetable')}?faculty={faculty_id}&year={year_id}"
+        return reverse_lazy('attendance:weekly-schedule-list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pass query params to template for back button
+        context['faculty_id'] = self.request.GET.get('faculty_id', '')
+        context['year_id'] = self.request.GET.get('year_id', '')
+        context['day'] = self.request.GET.get('day', '')
+        context['timeslot_id'] = self.request.GET.get('timeslot_id', '')
+        context['return_to_timetable'] = bool(self.request.GET.get('day'))
+        return context
+
+
+class WeeklyScheduleDeleteView(LoginRequiredMixin, AdminOnlyMixin, DeleteView):
+    model = WeeklyClassSchedule
+    template_name = 'attendance/weekly_schedule_confirm_delete.html'
+    success_url = reverse_lazy('attendance:weekly-schedule-list')
+
+
+class AttendanceTimetableView(LoginRequiredMixin, ListView):
+    model = WeeklyClassSchedule
+    template_name = 'attendance/attendance_timetable.html'
+    context_object_name = 'schedules'
+    WEEKDAY_ORDER = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+    def _filter_options(self):
+        user = self.request.user
+        if is_admin_user(user):
+            faculties = Faculty.objects.order_by('name')
+            years = EnrollmentYear.objects.order_by('year')
+        else:
+            teacher_profile = getattr(user, 'teacher_profile', None)
+            student_profile = getattr(user, 'student_profile', None)
+            if teacher_profile:
+                faculties = teacher_profile.faculties.order_by('name')
+                years = EnrollmentYear.objects.filter(students__faculty__in=faculties).distinct().order_by('year')
+            elif student_profile:
+                faculties = Faculty.objects.filter(pk=student_profile.faculty_id)
+                years = EnrollmentYear.objects.filter(pk=student_profile.enrollment_batch_id)
+            else:
+                faculties = Faculty.objects.none()
+                years = EnrollmentYear.objects.none()
+        return faculties, years
+
+    def get_queryset(self):
+        queryset = get_accessible_schedule_queryset(self.request.user)
+        user = self.request.user
+        faculty_id = self.request.GET.get('faculty')
+        year_id = self.request.GET.get('year')
+
+        # For students, auto-apply their batch and faculty filters if not manually overridden
+        student_profile = getattr(user, 'student_profile', None)
+        if student_profile:
+            if not faculty_id:
+                faculty_id = str(student_profile.faculty_id)
+            if not year_id:
+                year_id = str(student_profile.enrollment_batch_id)
+
+        if faculty_id:
+            queryset = queryset.filter(faculty_id=faculty_id)
+        if year_id:
+            queryset = queryset.filter(enrollment_batch_id=year_id)
+
+        return queryset.order_by('day_of_week', 'timeslot__display_order', 'timeslot__start_time', 'subject__name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        ordered_slots = list(TimeSlot.objects.order_by('display_order', 'start_time', 'id'))
+        context['timeslots'] = ordered_slots
+
+        faculties, years = self._filter_options()
+        context['faculties'] = faculties
+        context['enrollment_years'] = years
+        
+        # For students, pre-select their faculty and batch
+        selected_faculty = self.request.GET.get('faculty', '')
+        selected_year = self.request.GET.get('year', '')
+        
+        user = self.request.user
+        student_profile = getattr(user, 'student_profile', None)
+        if student_profile and not selected_faculty and not selected_year:
+            selected_faculty = str(student_profile.faculty_id)
+            selected_year = str(student_profile.enrollment_batch_id)
+        
+        context['selected_faculty'] = selected_faculty
+        context['selected_year'] = selected_year
+        
+        # Check if both filters are selected
+        has_both_filters = bool(selected_faculty and selected_year)
+        context['has_both_filters'] = has_both_filters
+
+        # Only build timetable if both filters are selected
+        if has_both_filters:
+            schedule_index = {}
+            for schedule in context['schedules']:
+                if schedule.day_of_week and schedule.timeslot_id:
+                    schedule_index[(schedule.day_of_week, schedule.timeslot_id)] = schedule
+
+            rows = []
+            for day_key in self.WEEKDAY_ORDER:
+                cells = []
+                for slot in ordered_slots:
+                    schedule = schedule_index.get((day_key, slot.id))
+                    cells.append({
+                        'slot': slot,
+                        'schedule': schedule,
+                        'is_break': slot.is_break,
+                    })
+                rows.append({
+                    'day_key': day_key,
+                    'day_label': day_key.title(),
+                    'cells': cells,
+                })
+
+            context['timetable_rows'] = rows
+        else:
+            context['timetable_rows'] = []
+        
         return context
 
     def _build_pdf_response(self, filename_base, title_text, report_dates, rows):

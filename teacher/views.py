@@ -12,26 +12,32 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from django.utils.decorators import method_decorator
 from openpyxl import Workbook, load_workbook
 
+from LMS.roles import get_student_profile, get_teacher_profile, is_admin_user
+from LMS.views import access_denied_response
 from student.models import Faculty
 from .models import Teacher
 from .forms import FirstLoginPasswordChangeForm
-from LMS.views import access_denied_response
 
 
-class NonStudentAccessRequiredMixin:
+class AdminOnlyMixin:
     def dispatch(self, request, *args, **kwargs):
-        if hasattr(request.user, 'student_profile') and not (request.user.is_staff or request.user.is_superuser):
-            return access_denied_response(request, 'Student accounts cannot access teacher management pages.')
+        if not is_admin_user(request.user):
+            return access_denied_response(request, 'Only administrators can access this page.')
         return super().dispatch(request, *args, **kwargs)
 
 
-class TeacherListView(LoginRequiredMixin, NonStudentAccessRequiredMixin, ListView):
+class TeacherListView(LoginRequiredMixin, ListView):
     model = Teacher
     template_name = 'teacher/teacher_list.html'
     context_object_name = 'teachers'
 
     def get_queryset(self):
-        return Teacher.objects.prefetch_related('faculties').order_by('name')
+        queryset = Teacher.objects.prefetch_related('faculties').order_by('name')
+        if is_admin_user(self.request.user):
+            return queryset
+        if get_teacher_profile(self.request.user):
+            return queryset
+        return queryset.none()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -61,14 +67,19 @@ class TeacherListView(LoginRequiredMixin, NonStudentAccessRequiredMixin, ListVie
         return context
 
 
-class TeacherDetailView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DetailView):
+class TeacherDetailView(LoginRequiredMixin, DetailView):
     model = Teacher
     template_name = 'teacher/teacher_detail.html'
     context_object_name = 'teacher'
-    queryset = Teacher.objects.all()
+
+    def get_queryset(self):
+        queryset = Teacher.objects.prefetch_related('faculties', 'user')
+        if is_admin_user(self.request.user) or get_teacher_profile(self.request.user):
+            return queryset
+        return queryset.none()
 
 
-class TeacherCreateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, CreateView):
+class TeacherCreateView(LoginRequiredMixin, AdminOnlyMixin, CreateView):
     model = Teacher
     template_name = 'teacher/teacher_form.html'
     fields = [
@@ -85,7 +96,7 @@ class TeacherCreateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, Creat
     success_url = reverse_lazy('teacher:teacher-create')
 
 
-class TeacherUpdateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, UpdateView):
+class TeacherUpdateView(LoginRequiredMixin, AdminOnlyMixin, UpdateView):
     model = Teacher
     template_name = 'teacher/teacher_form.html'
     fields = [
@@ -102,13 +113,13 @@ class TeacherUpdateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, Updat
     success_url = reverse_lazy('teacher:teacher-list')
 
 
-class TeacherDeleteView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DeleteView):
+class TeacherDeleteView(LoginRequiredMixin, AdminOnlyMixin, DeleteView):
     model = Teacher
     template_name = 'teacher/teacher_confirm_delete.html'
     success_url = reverse_lazy('teacher:teacher-list')
 
 
-class TeacherImportView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
+class TeacherImportView(LoginRequiredMixin, AdminOnlyMixin, View):
     template_name = 'teacher/teacher_import.html'
 
     def get(self, request):
@@ -206,7 +217,7 @@ class TeacherImportView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View)
         return redirect('teacher:teacher-list')
 
 
-class TeacherImportTemplateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
+class TeacherImportTemplateView(LoginRequiredMixin, AdminOnlyMixin, View):
     def get(self, request):
         workbook = Workbook()
         worksheet = workbook.active

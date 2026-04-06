@@ -65,12 +65,14 @@
 				<div>
 					<h2 class="h5 mb-3">Your Submission</h2>
 					<div class="mb-3">
-						{% if student_recipient.is_submitted %}
+						{% if student_recipient.submission_status == 'resubmitted' %}
+						<span class="badge text-bg-info">Resubmitted</span>
+						{% elif student_recipient.is_submitted %}
 						<span class="badge text-bg-success">Submitted</span>
-						<small class="text-secondary ms-2">{{ student_recipient.submitted_at|date:"F j, Y, g:i a" }}</small>
 						{% else %}
 						<span class="badge text-bg-warning">Not Submitted</span>
 						{% endif %}
+						<small class="text-secondary ms-2">{{ student_recipient.submitted_at|date:"F j, Y, g:i a" }}</small>
 					</div>
 
 					{% if student_recipient.submission_file %}

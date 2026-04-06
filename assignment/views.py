@@ -9,6 +9,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from student.models import Student
+from LMS.roles import can_manage_academic_records, get_teacher_profile, is_admin_user
 from LMS.views import access_denied_response
 
 from .models import Assignment, AssignmentRecipient
@@ -66,10 +67,7 @@ class RoleFilteredAssignmentQuerysetMixin:
 
 class TeacherOrAdminRequiredMixin(UserPassesTestMixin):
     def test_func(self):
-        user = self.request.user
-        return user.is_authenticated and (
-            user.is_superuser or user.is_staff or hasattr(user, 'teacher_profile')
-        )
+        return self.request.user.is_authenticated and can_manage_academic_records(self.request.user)
 
     def handle_no_permission(self):
         if self.request.user.is_authenticated:
@@ -134,10 +132,10 @@ class AssignmentRosterView(LoginRequiredMixin, RoleFilteredAssignmentQuerysetMix
     def get_queryset(self):
         queryset = self.get_role_filtered_queryset().select_related('faculty', 'enrollment_batch')
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if is_admin_user(user):
             return queryset
 
-        teacher_profile = getattr(user, 'teacher_profile', None)
+        teacher_profile = get_teacher_profile(user)
         if teacher_profile:
             return queryset.filter(
                 Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
@@ -147,7 +145,7 @@ class AssignmentRosterView(LoginRequiredMixin, RoleFilteredAssignmentQuerysetMix
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if not (request.user.is_superuser or request.user.is_staff or hasattr(request.user, 'teacher_profile')):
+        if not can_manage_academic_records(request.user):
             return access_denied_response(request, 'Only teachers and admins can view assignment rosters.')
         self.ensure_recipients_exist()
         if request.method == 'POST':
@@ -198,9 +196,9 @@ class AssignmentUpdateView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, Role
     def get_queryset(self):
         queryset = self.get_role_filtered_queryset()
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if is_admin_user(user):
             return queryset
-        teacher_profile = getattr(user, 'teacher_profile', None)
+        teacher_profile = get_teacher_profile(user)
         if teacher_profile:
             return queryset.filter(
                 Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
@@ -216,9 +214,9 @@ class AssignmentDeleteView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, Role
     def get_queryset(self):
         queryset = self.get_role_filtered_queryset()
         user = self.request.user
-        if user.is_superuser or user.is_staff:
+        if is_admin_user(user):
             return queryset
-        teacher_profile = getattr(user, 'teacher_profile', None)
+        teacher_profile = get_teacher_profile(user)
         if teacher_profile:
             return queryset.filter(
                 Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
@@ -244,12 +242,17 @@ class AssignmentSubmissionView(LoginRequiredMixin, RoleFilteredAssignmentQueryse
             return redirect('assignment:assignment-detail', pk=assignment.pk)
 
         recipient.submission_file = submission_file
-        recipient.is_submitted = True
         recipient.submitted_at = timezone.now()
         if not recipient.is_seen:
             recipient.is_seen = True
             recipient.seen_at = timezone.now()
-        recipient.save(update_fields=['submission_file', 'is_submitted', 'submitted_at', 'is_seen', 'seen_at'])
+        recipient.is_submitted = True
+        recipient.submission_status = (
+            AssignmentRecipient.SUBMISSION_RESUBMITTED
+            if recipient.submission_status != AssignmentRecipient.SUBMISSION_PENDING
+            else AssignmentRecipient.SUBMISSION_SUBMITTED
+        )
+        recipient.save(update_fields=['submission_file', 'is_submitted', 'submitted_at', 'is_seen', 'seen_at', 'submission_status'])
 
         messages.success(request, 'Assignment submitted successfully.')
         return redirect('assignment:assignment-detail', pk=assignment.pk)

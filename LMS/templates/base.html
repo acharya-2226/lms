@@ -49,16 +49,20 @@
 							<a class="nav-link {% if current_url_name == 'home' and not current_namespace %}active{% endif %}" href="{% url 'home' %}"
 								{% if current_url_name == 'home' and not current_namespace %}aria-current="page"{% endif %}>Home</a>
 						</li>
+						{% if is_admin_like_user or has_teacher_profile %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'student' %}active{% endif %}"
 								href="{% url 'student:student-list' %}"
 								{% if current_namespace == 'student' %}aria-current="page"{% endif %}>Students</a>
 						</li>
+						{% endif %}
+						{% if is_admin_like_user %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'teacher' %}active{% endif %}"
 								href="{% url 'teacher:teacher-list' %}"
 								{% if current_namespace == 'teacher' %}aria-current="page"{% endif %}>Teachers</a>
 						</li>
+						{% endif %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'assignment' %}active{% endif %}"
 								href="{% url 'assignment:assignment-list' %}"
@@ -133,8 +137,12 @@
 					<h3 class="footer-heading">Quick Links</h3>
 					<ul class="footer-links list-unstyled mb-0">
 						<li><a href="{% url 'home' %}">Home</a></li>
+						{% if is_admin_like_user or has_teacher_profile %}
 						<li><a href="{% url 'student:student-list' %}">Students</a></li>
+						{% endif %}
+						{% if is_admin_like_user %}
 						<li><a href="{% url 'teacher:teacher-list' %}">Teachers</a></li>
+						{% endif %}
 						<li><a href="{% url 'assignment:assignment-list' %}">Assignments</a></li>
 						<li><a href="{% url 'attendance:attendance-list' %}">Attendance</a></li>
 						{% if is_admin_like_user %}
