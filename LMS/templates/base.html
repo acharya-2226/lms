@@ -73,9 +73,26 @@
 					{% endwith %}
 
 					<ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+						{% if request.user.is_authenticated %}
+						<li class="nav-item text-white small me-lg-2">
+							Logged in as {{ current_user_display_name }}
+						</li>
+						<li class="nav-item">
+							<form method="post" action="{% url 'logout' %}" class="d-inline">
+								{% csrf_token %}
+								<button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
+							</form>
+						</li>
+						{% else %}
+						<li class="nav-item">
+							<a class="btn btn-outline-light btn-sm" href="{% url 'login' %}">Login</a>
+						</li>
+						{% endif %}
+						{% if request.user.is_staff or request.user.is_superuser %}
 						<li class="nav-item">
 							<a class="btn btn-outline-light btn-sm" href="{% url 'admin:index' %}">Admin</a>
 						</li>
+						{% endif %}
 					</ul>
 				</div>
 			</div>
@@ -120,14 +137,25 @@
 						<li><a href="{% url 'teacher:teacher-list' %}">Teachers</a></li>
 						<li><a href="{% url 'assignment:assignment-list' %}">Assignments</a></li>
 						<li><a href="{% url 'attendance:attendance-list' %}">Attendance</a></li>
+						{% if is_admin_like_user %}
 						<li><a href="{% url 'admin:index' %}">Admin</a></li>
+						{% endif %}
 					</ul>
 				</div>
 
 				<div class="col-lg-3 col-md-6">
 					<h3 class="footer-heading">Account</h3>
 					<ul class="footer-links list-unstyled mb-0">
-						<li><a href="{% url 'admin:login' %}">Login</a></li>
+						{% if request.user.is_authenticated %}
+						<li>
+							<form method="post" action="{% url 'logout' %}" class="d-inline">
+								{% csrf_token %}
+								<button type="submit" class="btn btn-link p-0 text-decoration-none">Logout</button>
+							</form>
+						</li>
+						{% else %}
+						<li><a href="{% url 'login' %}">Login</a></li>
+						{% endif %}
 					</ul>
 				</div>
 			</div>

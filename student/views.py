@@ -2,16 +2,28 @@ from io import BytesIO
 from collections import OrderedDict
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.utils.decorators import method_decorator
 from openpyxl import Workbook, load_workbook
 
 from .models import EnrollmentYear, Faculty, Student
+from .forms import FirstLoginPasswordChangeForm
+from LMS.views import access_denied_response
 
-class StudentListView(ListView):
+
+class NonStudentAccessRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if hasattr(request.user, 'student_profile') and not (request.user.is_staff or request.user.is_superuser):
+            return access_denied_response(request, 'Student accounts cannot access student management pages.')
+        return super().dispatch(request, *args, **kwargs)
+
+class StudentListView(LoginRequiredMixin, NonStudentAccessRequiredMixin, ListView):
     model = Student
     template_name = 'student/student_list.html'
     context_object_name = 'students'
@@ -50,31 +62,31 @@ class StudentListView(ListView):
         ]
         return context
 
-class StudentDetailView(DetailView):
+class StudentDetailView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DetailView):
     model = Student
     template_name = 'student/student_detail.html'
     context_object_name = 'student'
     queryset = Student.objects.all()
 
-class StudentCreateView(CreateView):
+class StudentCreateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, CreateView):
     model = Student
     template_name = 'student/student_form.html'
     fields = ['name', 'roll_number', 'enrollment_batch', 'faculty', 'age', 'email', 'dp', 'address']
     success_url = reverse_lazy('student:student-create')
 
-class StudentUpdateView(UpdateView):
+class StudentUpdateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, UpdateView):
     model = Student
     template_name = 'student/student_form.html'
     fields = ['name', 'roll_number', 'enrollment_batch', 'faculty', 'age', 'email', 'dp', 'address']
     success_url = reverse_lazy('student:student-list')
 
-class StudentDeleteView(DeleteView):
+class StudentDeleteView(LoginRequiredMixin, NonStudentAccessRequiredMixin, DeleteView):
     model = Student
     template_name = 'student/student_confirm_delete.html'
     success_url = reverse_lazy('student:student-list')
 
 
-class StudentImportView(View):
+class StudentImportView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
     template_name = 'student/student_import.html'
 
     def get(self, request):
@@ -180,7 +192,7 @@ class StudentImportView(View):
         return redirect('student:student-list')
 
 
-class StudentImportTemplateView(View):
+class StudentImportTemplateView(LoginRequiredMixin, NonStudentAccessRequiredMixin, View):
     def get(self, request):
         workbook = Workbook()
         worksheet = workbook.active
@@ -215,4 +227,47 @@ class StudentImportTemplateView(View):
         )
         response['Content-Disposition'] = 'attachment; filename="student_import_template.xlsx"'
         return response
+
+
+@method_decorator(login_required, name='dispatch')
+class FirstLoginPasswordChangeView(View):
+    """View for changing password on first login"""
+    template_name = 'student/first_login_password_change.html'
+    
+    def get(self, request):
+        """Display password change form"""
+        try:
+            student = request.user.student_profile
+            if not student.is_first_login:
+                messages.info(request, 'You have already changed your password.')
+                return redirect('student:student-list')
+        except AttributeError:
+            # User is not a student, redirect to home
+            messages.error(request, 'Only students can access this page.')
+            return redirect('/')
+        
+        form = FirstLoginPasswordChangeForm(request.user)
+        return render(request, self.template_name, {'form': form})
+    
+    def post(self, request):
+        """Process password change"""
+        try:
+            student = request.user.student_profile
+        except AttributeError:
+            messages.error(request, 'Only students can access this page.')
+            return redirect('/')
+        
+        form = FirstLoginPasswordChangeForm(request.user, request.POST)
+        
+        if form.is_valid():
+            form.save()
+            
+            # Mark first login as False
+            student.is_first_login = False
+            student.save()
+            
+            messages.success(request, 'Your password has been changed successfully. Please login again.')
+            return redirect('login')
+        
+        return render(request, self.template_name, {'form': form})
 

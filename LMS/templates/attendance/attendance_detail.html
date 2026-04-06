@@ -13,20 +13,32 @@
 					<p class="text-secondary mb-0">Subject {{ attendance.subject|default:"-" }} | Teacher {{ attendance.teacher|default:"-" }} | Faculty {{ attendance.faculty|default:"-" }} | Year {{ attendance.enrollment_batch|default:"-" }}</p>
 				</div>
 				<div class="d-flex flex-wrap gap-2">
+				{% if can_manage_academic_records %}
 				<a class="btn btn-outline-primary" href="{% url 'attendance:attendance-update' attendance.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
 				<a class="btn btn-outline-secondary" href="{% url 'attendance:attendance-roster' attendance.pk %}">Roster</a>
 				<a class="btn btn-outline-danger" href="{% url 'attendance:attendance-delete' attendance.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
+				{% endif %}
 					<a class="btn btn-primary" href="{% url 'attendance:attendance-list' %}">Back to List</a>
 				</div>
 			</div>
 
 			<div class="detail-pane bg-light rounded-4 p-4 h-100">
 				<div class="table-responsive">
-					<table class="table table-striped mb-0 align-middle">
+					<table class="table table-compact table-striped mb-0 align-middle">
 						<tbody>
 							<tr>
 								<th scope="row" class="w-25">Note</th>
 								<td>{{ attendance.note|default:"-" }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Timeslot</th>
+								<td>
+									{% if attendance.start_time and attendance.end_time %}
+									{{ attendance.start_time|time:"g:i a" }} - {{ attendance.end_time|time:"g:i a" }}
+									{% else %}
+									-
+									{% endif %}
+								</td>
 							</tr>
 							<tr>
 								<th scope="row">Attendance Date</th>

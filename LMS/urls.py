@@ -4,9 +4,14 @@ from django.conf.urls.static import static
 from django.urls import include, path
 from django.views.generic import TemplateView
 from django.views.generic import RedirectView
+from .views import FrontendLoginView, FrontendLogoutView
+
+handler403 = 'LMS.views.permission_denied_handler'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('login/', FrontendLoginView.as_view(), name='login'),
+    path('logout/', FrontendLogoutView.as_view(), name='logout'),
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
     path('student/', RedirectView.as_view(pattern_name='student:student-list', permanent=False)),
     path('teacher/', RedirectView.as_view(pattern_name='teacher:teacher-list', permanent=False)),

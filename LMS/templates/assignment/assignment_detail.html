@@ -13,16 +13,18 @@
 					<p class="text-secondary mb-0">Subject {{ assignment.subject|default:"-" }} | Teacher {{ assignment.teacher|default:"-" }} | Faculty {{ assignment.faculty|default:"-" }} | Year {{ assignment.enrollment_batch|default:"-" }}</p>
 				</div>
 				<div class="d-flex flex-wrap gap-2">
+				{% if can_manage_academic_records %}
 				<a class="btn btn-outline-primary" href="{% url 'assignment:assignment-update' assignment.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
 				<a class="btn btn-outline-secondary" href="{% url 'assignment:assignment-roster' assignment.pk %}">Roster</a>
 				<a class="btn btn-outline-danger" href="{% url 'assignment:assignment-delete' assignment.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
+				{% endif %}
 					<a class="btn btn-primary" href="{% url 'assignment:assignment-list' %}">Back to List</a>
 				</div>
 			</div>
 
 			<div class="detail-pane bg-light rounded-4 p-4 h-100">
 				<div class="table-responsive">
-					<table class="table table-striped mb-0 align-middle">
+					<table class="table table-compact table-striped mb-0 align-middle">
 						<tbody>
 							<tr>
 								<th scope="row" class="w-25">Description</th>
@@ -57,6 +59,37 @@
 						</tbody>
 					</table>
 				</div>
+
+				{% if is_student_user and student_recipient %}
+				<hr>
+				<div>
+					<h2 class="h5 mb-3">Your Submission</h2>
+					<div class="mb-3">
+						{% if student_recipient.is_submitted %}
+						<span class="badge text-bg-success">Submitted</span>
+						<small class="text-secondary ms-2">{{ student_recipient.submitted_at|date:"F j, Y, g:i a" }}</small>
+						{% else %}
+						<span class="badge text-bg-warning">Not Submitted</span>
+						{% endif %}
+					</div>
+
+					{% if student_recipient.submission_file %}
+					<p class="mb-3">Current file: <a href="{{ student_recipient.submission_file.url }}" target="_blank" rel="noopener">Download your submission</a></p>
+					{% endif %}
+
+					<form method="post" action="{% url 'assignment:assignment-submit' assignment.pk %}" enctype="multipart/form-data" class="row g-2" data-loading-submit>
+						{% csrf_token %}
+						<div class="col-md-8">
+							<input class="form-control" type="file" name="submission_file" required>
+						</div>
+						<div class="col-md-4">
+							<button type="submit" class="btn btn-primary w-100">
+								{% if student_recipient.is_submitted %}Resubmit{% else %}Submit Assignment{% endif %}
+							</button>
+						</div>
+					</form>
+				</div>
+				{% endif %}
 			</div>
 		</div>
 	</div>

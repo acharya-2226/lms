@@ -75,6 +75,19 @@
   flex-shrink: 0;
 }
 
+.table-compact th,
+.table-compact td {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  font-size: 0.95rem;
+}
+
+.table-compact td,
+.table-compact th {
+  vertical-align: top;
+}
+
 .table td.text-end,
 .table th.text-end {
   min-width: 170px;

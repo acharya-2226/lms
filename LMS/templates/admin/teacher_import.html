@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Import Teachers from CSV - LMS Admin{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Import Teachers from CSV</h1>
+    
+    <div class="module">
+        <h2>Instructions</h2>
+        <ul>
+            <li>Download the CSV template below to see the required format</li>
+            <li>Fill in the teacher data according to the template format</li>
+            <li>Each teacher will get a randomly generated password</li>
+            <li>A User account will be created with the teacher's email as username</li>
+            <li>After import, a PDF with all credentials will be downloaded</li>
+            <li>Teachers must change their password on first login</li>
+        </ul>
+    </div>
+
+    <div class="module">
+        <h2>Download CSV Template</h2>
+        <p>
+            <a href="{% url 'admin:teacher_download_csv_template' %}" class="button">
+                📥 Download CSV Template
+            </a>
+        </p>
+    </div>
+
+    <div class="module">
+        <h2>Import CSV File</h2>
+        <form method="post" enctype="multipart/form-data" class="module">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <label for="id_csv_file">Select CSV File:</label>
+                <input type="file" id="id_csv_file" name="csv_file" accept=".csv" required class="vTextField">
+                <p class="help">Only .csv files are supported</p>
+            </div>
+
+            <div class="submit-row">
+                <input type="submit" value="Import Teachers" class="default" />
+                <a href="{% url 'admin:teacher_teacher_changelist' %}" class="button cancel-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="module">
+        <h2>CSV Template Format</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Employee ID</th>
+                    <th>Department</th>
+                    <th>Qualification</th>
+                    <th>Experience Years</th>
+                    <th>Faculties</th>
+                    <th>Email</th>
+                    <th>Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>John Doe</td>
+                    <td>EMP001</td>
+                    <td>Science</td>
+                    <td>MSc Physics</td>
+                    <td>5</td>
+                    <td>Science,IT</td>
+                    <td>john@example.com</td>
+                    <td>City, Country</td>
+                </tr>
+                <tr>
+                    <td>Jane Smith</td>
+                    <td>EMP002</td>
+                    <td>Engineering</td>
+                    <td>BE Computer Science</td>
+                    <td>8</td>
+                    <td>Engineering</td>
+                    <td>jane@example.com</td>
+                    <td>City, Country</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <style>
+        .module h2 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+        
+        .form-row label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .form-row input[type="file"] {
+            margin-bottom: 5px;
+        }
+        
+        .form-row .help {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+        
+        .submit-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+        }
+        
+        table th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .button.default {
+            background-color: #417690;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .button.default:hover {
+            background-color: #2f5a6f;
+        }
+        
+        .button.cancel-link {
+            background-color: #888;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .button.cancel-link:hover {
+            background-color: #666;
+        }
+    </style>
+</div>
+{% endblock %}

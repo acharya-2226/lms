@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Access Denied | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4 p-lg-5">
+            <span class="eyebrow">Authorization</span>
+            <h1 class="h3 mb-3">Access Denied</h1>
+            <p class="text-secondary mb-4">{{ error_message }}</p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="{% url 'home' %}">Go Home</a>
+                <a class="btn btn-outline-primary" href="{% url 'student:student-list' %}">Students Portal</a>
+                <a class="btn btn-outline-primary" href="{% url 'teacher:teacher-list' %}">Teachers Portal</a>
+                <a class="btn btn-outline-primary" href="{% url 'assignment:assignment-list' %}">Assignments</a>
+                <a class="btn btn-outline-primary" href="{% url 'attendance:attendance-list' %}">Attendance</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

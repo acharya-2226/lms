@@ -6,6 +6,24 @@ from teacher.models import Teacher
 
 
 class Attendance(models.Model):
+    DAY_MONDAY = 'monday'
+    DAY_TUESDAY = 'tuesday'
+    DAY_WEDNESDAY = 'wednesday'
+    DAY_THURSDAY = 'thursday'
+    DAY_FRIDAY = 'friday'
+    DAY_SATURDAY = 'saturday'
+    DAY_SUNDAY = 'sunday'
+
+    DAY_CHOICES = [
+        (DAY_MONDAY, 'Monday'),
+        (DAY_TUESDAY, 'Tuesday'),
+        (DAY_WEDNESDAY, 'Wednesday'),
+        (DAY_THURSDAY, 'Thursday'),
+        (DAY_FRIDAY, 'Friday'),
+        (DAY_SATURDAY, 'Saturday'),
+        (DAY_SUNDAY, 'Sunday'),
+    ]
+
     title = models.CharField(max_length=200)
     subject = models.ForeignKey(
         Subject,
@@ -39,6 +57,9 @@ class Attendance(models.Model):
         default=None,
         related_name='attendances',
     )
+    day_of_week = models.CharField(max_length=15, choices=DAY_CHOICES, blank=True, default='')
+    start_time = models.TimeField(null=True, blank=True, default=None)
+    end_time = models.TimeField(null=True, blank=True, default=None)
     attendance_date = models.DateField()
     note = models.TextField(null=True, blank=True, default=None)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -47,6 +68,8 @@ class Attendance(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        if self.attendance_date:
+            self.day_of_week = self.attendance_date.strftime('%A').lower()
         if self.subject and self.attendance_date:
             self.title = f'{self.subject.name} : {self.attendance_date}'
         elif self.attendance_date:

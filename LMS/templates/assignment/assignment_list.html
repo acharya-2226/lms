@@ -9,12 +9,14 @@
 			<span class="eyebrow">Records</span>
 			<h1 class="h2 mb-0">Assignments</h1>
 		</div>
+		{% if can_manage_academic_records %}
 		<a class="btn btn-primary" href="{% url 'assignment:assignment-create' %}">Add Assignment</a>
+		{% endif %}
 	</div>
 
 	{% if assignments %}
 		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
-			<table class="table align-middle mb-0">
+			<table class="table table-compact align-middle mb-0">
 				<thead class="table-light">
 					<tr>
 						<th>Title</th>
@@ -23,6 +25,9 @@
 						<th>Faculty</th>
 						<th>Year</th>
 						<th>Due Date</th>
+						{% if is_student_user %}
+						<th>Submission</th>
+						{% endif %}
 						<th class="text-end">Actions</th>
 					</tr>
 				</thead>
@@ -35,12 +40,26 @@
 							<td>{{ assignment.faculty|default:"-" }}</td>
 							<td>{{ assignment.enrollment_batch|default:"-" }}</td>
 							<td>{{ assignment.due_date|date:"F j, Y"|default:"-" }}</td>
+							{% if is_student_user %}
+							<td>
+								{% if assignment.current_recipient and assignment.current_recipient.is_submitted %}
+								<span class="badge text-bg-success">Submitted</span>
+								{% else %}
+								<span class="badge text-bg-warning">Pending</span>
+								{% endif %}
+							</td>
+							{% endif %}
 							<td class="text-end">
 								<div class="action-links">
 									<a href="{% url 'assignment:assignment-detail' assignment.pk %}" aria-label="View" title="View"><i class="bi bi-eye text-primary"></i><span class="visually-hidden">View</span></a>
+									{% if is_student_user %}
+									<a href="{% url 'assignment:assignment-detail' assignment.pk %}">{% if assignment.current_recipient and assignment.current_recipient.is_submitted %}Resubmit{% else %}Submit{% endif %}</a>
+									{% endif %}
+									{% if can_manage_academic_records %}
 									<a href="{% url 'assignment:assignment-roster' assignment.pk %}">Roster</a>
 									<a href="{% url 'assignment:assignment-update' assignment.pk %}" aria-label="Edit" title="Edit"><i class="bi bi-pencil-square text-success"></i><span class="visually-hidden">Edit</span></a>
 									<a href="{% url 'assignment:assignment-delete' assignment.pk %}" aria-label="Delete" title="Delete"><i class="bi bi-trash text-danger"></i><span class="visually-hidden">Delete</span></a>
+									{% endif %}
 								</div>
 							</td>
 						</tr>
@@ -52,8 +71,12 @@
 		<div class="empty-state card border-0 shadow-sm">
 			<div class="card-body p-5 text-center">
 				<h2 class="h4">No assignments yet</h2>
+				{% if can_manage_academic_records %}
 				<p class="text-secondary mb-4">Create the first assignment targeted to a faculty and year.</p>
 				<a class="btn btn-primary" href="{% url 'assignment:assignment-create' %}">Create Assignment</a>
+				{% else %}
+				<p class="text-secondary mb-0">No assignments available for your account yet.</p>
+				{% endif %}
 			</div>
 		</div>
 	{% endif %}

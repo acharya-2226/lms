@@ -1,8 +1,11 @@
 from io import BytesIO
 from datetime import timedelta
+from collections import OrderedDict
 
 from django.contrib import messages
 from django import forms
+from django.db.models import Q
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -18,6 +21,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from student.models import Student, Subject
+from LMS.views import access_denied_response
 
 from .models import Attendance, AttendanceEntry
 
@@ -40,9 +44,11 @@ def seed_attendance_entries(attendance):
 class AttendanceForm(forms.ModelForm):
     class Meta:
         model = Attendance
-        fields = ['subject', 'teacher', 'faculty', 'enrollment_batch', 'attendance_date', 'note']
+        fields = ['subject', 'teacher', 'faculty', 'enrollment_batch', 'attendance_date', 'start_time', 'end_time', 'note']
         widgets = {
             'attendance_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
         }
 
     def clean(self):
@@ -51,6 +57,11 @@ class AttendanceForm(forms.ModelForm):
         faculty = cleaned_data.get('faculty')
         enrollment_batch = cleaned_data.get('enrollment_batch')
         attendance_date = cleaned_data.get('attendance_date')
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+
+        if start_time and end_time and start_time >= end_time:
+            raise forms.ValidationError('Start time must be before end time.')
 
         if subject and faculty and enrollment_batch and attendance_date:
             duplicate_exists = Attendance.objects.filter(
@@ -76,27 +87,86 @@ class AttendanceReportForm(forms.Form):
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
 
 
-class AttendanceListView(ListView):
+class RoleFilteredAttendanceQuerysetMixin:
+    def get_base_queryset(self):
+        return Attendance.objects.select_related(
+            'subject', 'teacher', 'faculty', 'enrollment_batch'
+        ).prefetch_related('entries__student')
+
+    def get_role_filtered_queryset(self):
+        queryset = self.get_base_queryset()
+        user = self.request.user
+
+        if user.is_superuser or user.is_staff:
+            return queryset
+
+        student_profile = getattr(user, 'student_profile', None)
+        if student_profile:
+            return queryset.filter(entries__student=student_profile).distinct()
+
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if teacher_profile:
+            return queryset.filter(
+                Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
+            ).distinct()
+
+        return queryset.none()
+
+
+class TeacherOrAdminRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        user = self.request.user
+        return user.is_authenticated and (
+            user.is_superuser or user.is_staff or hasattr(user, 'teacher_profile')
+        )
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            return access_denied_response(self.request, 'You do not have permission to modify attendance records.')
+        return super().handle_no_permission()
+
+
+class AttendanceListView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, ListView):
     model = Attendance
     template_name = 'attendance/attendance_list.html'
     context_object_name = 'attendances'
 
+    def get_queryset(self):
+        return self.get_role_filtered_queryset().order_by('-attendance_date', '-created_at')
 
-class AttendanceDetailView(DetailView):
+
+class AttendanceDetailView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, DetailView):
     model = Attendance
     template_name = 'attendance/attendance_detail.html'
     context_object_name = 'attendance'
-    queryset = Attendance.objects.all()
+
+    def get_queryset(self):
+        return self.get_role_filtered_queryset()
 
 
-class AttendanceRosterView(DetailView):
+class AttendanceRosterView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, DetailView):
     model = Attendance
     template_name = 'attendance/attendance_roster.html'
     context_object_name = 'attendance'
-    queryset = Attendance.objects.select_related('subject', 'teacher', 'faculty', 'enrollment_batch').all()
+
+    def get_queryset(self):
+        queryset = self.get_role_filtered_queryset().select_related('subject', 'teacher', 'faculty', 'enrollment_batch')
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return queryset
+
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if teacher_profile:
+            return queryset.filter(
+                Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
+            ).distinct()
+
+        return queryset.none()
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
+        if not (request.user.is_superuser or request.user.is_staff or hasattr(request.user, 'teacher_profile')):
+            return access_denied_response(request, 'Only teachers and admins can view attendance rosters.')
         self.ensure_entries_exist()
         if request.method == 'POST':
             return self.handle_post(request)
@@ -138,7 +208,7 @@ class AttendanceRosterView(DetailView):
         return context
 
 
-class AttendanceCreateView(CreateView):
+class AttendanceCreateView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, CreateView):
     model = Attendance
     template_name = 'attendance/attendance_form.html'
     form_class = AttendanceForm
@@ -150,30 +220,65 @@ class AttendanceCreateView(CreateView):
         return redirect('attendance:attendance-roster', pk=self.object.pk)
 
 
-class AttendanceUpdateView(UpdateView):
+class AttendanceUpdateView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, RoleFilteredAttendanceQuerysetMixin, UpdateView):
     model = Attendance
     template_name = 'attendance/attendance_form.html'
     form_class = AttendanceForm
     success_url = reverse_lazy('attendance:attendance-list')
 
+    def get_queryset(self):
+        queryset = self.get_role_filtered_queryset()
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return queryset
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if teacher_profile:
+            return queryset.filter(
+                Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
+            ).distinct()
+        return queryset.none()
 
-class AttendanceDeleteView(DeleteView):
+
+class AttendanceDeleteView(LoginRequiredMixin, TeacherOrAdminRequiredMixin, RoleFilteredAttendanceQuerysetMixin, DeleteView):
     model = Attendance
     template_name = 'attendance/attendance_confirm_delete.html'
     success_url = reverse_lazy('attendance:attendance-list')
 
+    def get_queryset(self):
+        queryset = self.get_role_filtered_queryset()
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return queryset
+        teacher_profile = getattr(user, 'teacher_profile', None)
+        if teacher_profile:
+            return queryset.filter(
+                Q(teacher=teacher_profile) | Q(faculty__in=teacher_profile.faculties.all())
+            ).distinct()
+        return queryset.none()
 
-class AttendanceReportView(View):
+
+class AttendanceReportView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, View):
     template_name = 'attendance/attendance_report.html'
 
     def get(self, request):
         form = AttendanceReportForm(request.GET or None)
+        form.fields['subject'].queryset = self.get_subject_queryset()
         return render(request, self.template_name, {'form': form})
 
+    def get_subject_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return Subject.objects.order_by('name')
 
-class AttendanceReportDownloadView(View):
+        attendance_queryset = self.get_role_filtered_queryset()
+        subject_ids = attendance_queryset.values_list('subject_id', flat=True)
+        return Subject.objects.filter(id__in=subject_ids).order_by('name').distinct()
+
+
+class AttendanceReportDownloadView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, View):
     def post(self, request):
         form = AttendanceReportForm(request.POST)
+        form.fields['subject'].queryset = self._allowed_subject_queryset()
         if not form.is_valid():
             messages.error(request, 'Please choose a valid subject and date range.')
             return redirect('attendance:attendance-report')
@@ -187,8 +292,9 @@ class AttendanceReportDownloadView(View):
             messages.error(request, 'Start date cannot be after end date.')
             return redirect('attendance:attendance-report')
 
+        allowed_attendance_queryset = self._allowed_attendance_queryset(subject, start_date, end_date)
         report_dates = self._build_date_list(start_date, end_date)
-        report_rows = self._build_matrix(subject, start_date, end_date, report_dates)
+        report_rows = self._build_matrix(allowed_attendance_queryset, report_dates)
         title_text = f'{subject.name} Attendance Report {start_date} - {end_date}'
         filename_base = f'attendance_report_{subject.name}_{start_date}_to_{end_date}'.replace(' ', '_')
 
@@ -204,13 +310,24 @@ class AttendanceReportDownloadView(View):
             current_date += timedelta(days=1)
         return report_dates
 
-    def _build_matrix(self, subject, start_date, end_date, report_dates):
-        attendances = Attendance.objects.select_related(
-            'subject', 'teacher', 'faculty', 'enrollment_batch'
-        ).prefetch_related('entries__student').filter(
+    def _allowed_subject_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return Subject.objects.order_by('name')
+
+        attendance_queryset = self.get_role_filtered_queryset()
+        subject_ids = attendance_queryset.values_list('subject_id', flat=True)
+        return Subject.objects.filter(id__in=subject_ids).order_by('name').distinct()
+
+    def _allowed_attendance_queryset(self, subject, start_date, end_date):
+        return self.get_role_filtered_queryset().filter(
             subject=subject,
             attendance_date__range=(start_date, end_date),
         ).order_by('attendance_date', 'id')
+
+    def _build_matrix(self, attendances, report_dates):
+        user = self.request.user
+        student_profile = getattr(user, 'student_profile', None)
 
         attendance_lookup = {}
         status_lookup = {}
@@ -219,6 +336,8 @@ class AttendanceReportDownloadView(View):
         for attendance in attendances:
             attendance_lookup[(attendance.attendance_date, attendance.faculty_id, attendance.enrollment_batch_id)] = attendance
             for entry in attendance.entries.all():
+                if student_profile and entry.student_id != student_profile.id:
+                    continue
                 students_by_id[entry.student_id] = entry.student
                 status_lookup[(attendance.attendance_date, attendance.faculty_id, attendance.enrollment_batch_id, entry.student_id)] = entry.status
 
@@ -320,6 +439,27 @@ class AttendanceReportDownloadView(View):
         )
         response['Content-Disposition'] = f'attachment; filename="{filename_base}.xlsx"'
         return response
+
+
+class AttendanceTimetableView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, ListView):
+    model = Attendance
+    template_name = 'attendance/attendance_timetable.html'
+    context_object_name = 'attendances'
+    WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'unscheduled']
+
+    def get_queryset(self):
+        return self.get_role_filtered_queryset().order_by('attendance_date', 'start_time', 'title')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        grouped = OrderedDict((day, []) for day in self.WEEKDAY_ORDER)
+        for attendance in context['attendances']:
+            day_key = attendance.day_of_week or 'unscheduled'
+            grouped.setdefault(day_key, []).append(attendance)
+        context['grouped_attendances'] = OrderedDict(
+            (day, items) for day in self.WEEKDAY_ORDER for items in [grouped.get(day, [])] if items
+        )
+        return context
 
     def _build_pdf_response(self, filename_base, title_text, report_dates, rows):
         output = BytesIO()
