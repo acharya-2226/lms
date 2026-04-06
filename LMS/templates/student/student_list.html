@@ -10,6 +10,7 @@
 			<h1 class="h2 mb-0">Students</h1>
 		</div>
 		<div class="d-flex flex-wrap align-items-center gap-2">
+			<a class="btn btn-outline-dark" href="{% url 'student:subject-list' %}">Subjects</a>
 			<a class="btn btn-outline-secondary" href="{% url 'student:student-import-template' %}">Download Format</a>
 			<a class="btn btn-outline-primary" href="{% url 'student:student-import' %}">Import XLSX</a>
 			<a class="btn btn-primary" href="{% url 'student:student-create' %}">Add Student</a>

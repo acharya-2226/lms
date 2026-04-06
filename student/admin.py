@@ -36,7 +36,7 @@ class SubjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'abbreviation', 'code', 'faculty')
     search_fields = ('name', 'abbreviation', 'code', 'faculty__name')
     list_filter = ('faculty',)
-    change_list_template = 'admin/subject/change_list.html'
+    change_list_template = 'admin/student/subject/change_list.html'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -165,6 +165,9 @@ class SubjectAdmin(admin.ModelAdmin):
             base = request.path.rsplit('/', 1)[0] + '/'
             extra_context['import_xlsx_url'] = base + 'import-xlsx/'
             extra_context['download_template_url'] = base + 'download-xlsx-template/'
+        extra_context['import_csv_url'] = extra_context.get('import_xlsx_url')
+        extra_context['import_button_label'] = '📥 Import Subjects from XLSX'
+        extra_context['template_button_label'] = '📋 Download XLSX Template'
         return super().changelist_view(request, extra_context=extra_context)
 
 
@@ -287,4 +290,6 @@ class StudentAdmin(admin.ModelAdmin):
             base = request.path.rsplit('/', 1)[0] + '/'
             extra_context['import_csv_url'] = base + 'import-csv/'
             extra_context['download_template_url'] = base + 'download-csv-template/'
+        extra_context['import_button_label'] = '📥 Import Students from CSV'
+        extra_context['template_button_label'] = '📋 Download CSV Template'
         return super().changelist_view(request, extra_context=extra_context)

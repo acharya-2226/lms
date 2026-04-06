@@ -1,11 +1,17 @@
 {% extends "admin/change_list.html" %}
 
-{% block object-tools-items %}
-    <li>
-        <a href="{{ download_template_url }}" class="addlink">Download XLSX Template</a>
-    </li>
-    <li>
-        <a href="{{ import_xlsx_url }}" class="addlink">Import Subjects XLSX</a>
-    </li>
+{% block search %}
+    {{ block.super }}
+{% endblock %}
+
+{% block result_list %}
+    <div style="margin-bottom: 20px;">
+        <a href="{{ import_xlsx_url }}" class="button" style="background-color: #417690; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">
+            📥 Import Subjects from XLSX
+        </a>
+        <a href="{{ download_template_url }}" class="button" style="background-color: #79aec8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            📋 Download XLSX Template
+        </a>
+    </div>
     {{ block.super }}
 {% endblock %}

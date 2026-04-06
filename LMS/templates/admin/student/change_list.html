@@ -6,11 +6,11 @@
 
 {% block result_list %}
     <div style="margin-bottom: 20px;">
-        <a href="{{ import_csv_url }}" class="button" style="background-color: #417690; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">
-            📥 Import Students from CSV
+        <a href="{% firstof import_csv_url import_xlsx_url '#' %}" class="button" style="background-color: #417690; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">
+            {{ import_button_label|default:"📥 Import Students from CSV" }}
         </a>
         <a href="{{ download_template_url }}" class="button" style="background-color: #79aec8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            📋 Download CSV Template
+            {{ template_button_label|default:"📋 Download CSV Template" }}
         </a>
     </div>
     {{ block.super }}
