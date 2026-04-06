@@ -1,0 +1,181 @@
+Engineer Prompt: LMS Hardening + UX Upgrade Plan
+
+You are a senior full-stack Django engineer. Improve this LMS for real-world production readiness while preserving existing core behavior unless explicitly noted.
+
+Project context:
+- Stack: Django + SQLite (current), Bootstrap-based UI.
+- Modules: student, teacher, assignment, attendance.
+- Current state: basic functionality works; import flows exist; role-based routing exists.
+- Key quality gap: no automated tests currently exist.
+
+High-priority findings from audit:
+1) No automated test coverage.
+2) Environment/security settings are development defaults (DEBUG=True, hardcoded secret key, ALLOWED_HOSTS empty).
+3) Navigation and home UX are student-centric and do not expose module workflows clearly for all roles.
+4) Middleware-driven first-login redirection can create confusing user journeys without clear status prompts.
+5) Import pipelines (student/teacher/subject) are extension-based validation only; data quality and error reporting are basic.
+6) Frontend lists lack search/filter/pagination for scale.
+7) Attendance view layer has signs of duplicated logic and needs maintainability cleanup.
+
+Goal:
+Deliver a production-ready v1.1 that is secure, testable, role-aware, and scalable for at least 10k student records with strong admin/operator usability.
+
+Scope of work:
+A) Security and environment hardening
+B) UX and information architecture improvement
+C) Data import robustness and observability
+D) Performance and query optimization
+E) Automated testing and CI baseline
+F) Operational readiness (logging, errors, backups)
+
+Detailed implementation requirements
+
+A. Security and environment hardening
+1) Settings split:
+- Introduce environment-based settings (base/dev/prod) or equivalent robust pattern.
+- Move SECRET_KEY, DEBUG, ALLOWED_HOSTS, and database config to environment variables.
+- Add secure defaults for production (SECURE_SSL_REDIRECT, SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE, SECURE_HSTS_SECONDS, SECURE_PROXY_SSL_HEADER as needed).
+
+2) Host and error handling:
+- Ensure local development host list includes localhost and 127.0.0.1.
+- Add friendly error pages for 400/403/404/500 with role-aware navigation options.
+
+3) Upload safety:
+- Validate MIME type (not only extension) for XLSX and assignment submissions.
+- Add configurable file size limits.
+- Sanitize and normalize uploaded filenames where applicable.
+
+B. UX and information architecture
+1) Top navigation redesign:
+- Show module links by role:
+  - Admin: Students, Teachers, Subjects, Assignments, Attendance, Admin.
+  - Teacher: Students (filtered), Teachers, Assignments, Attendance.
+  - Student: Assignments, Attendance, Timetable.
+- Keep navigation coherent on desktop and mobile.
+
+2) Home dashboard:
+- Replace generic student-only hero with role-based dashboard cards:
+  - Quick actions
+  - Pending work summary
+  - Recent activity (placeholder supported if backend not yet implemented)
+
+3) List usability upgrades:
+- Add search + filter controls + pagination for student, teacher, subject, assignment, attendance lists.
+- Preserve filters in URL query params for sharable views.
+- Add clear empty states and next-action CTAs.
+
+4) Access denied UX:
+- Show exactly what the user can do next based on role.
+- Include one-click return links to permitted modules.
+
+C. Import pipeline robustness
+1) Import preview + dry-run:
+- For student/teacher/subject imports, add a dry-run preview step showing:
+  - Rows to create/update
+  - Rows with validation errors
+  - Duplicate/conflict warnings
+- Let user confirm before commit.
+
+2) Validation quality:
+- Add strict schema validation for required columns and types.
+- Add row-level error report download (CSV/XLSX) with row number + reason.
+- Make faculty/year matching case-insensitive and normalized.
+
+3) Idempotency and matching strategy:
+- Define deterministic matching keys per entity and document them in UI.
+- For Subject, formalize precedence among code, abbreviation, name.
+- Avoid silent skips; always surface actionable warnings.
+
+D. Backend quality and performance
+1) Query optimization:
+- Review list and detail views for N+1 issues; use select_related/prefetch_related consistently.
+- Add database indexes for frequently filtered fields (faculty, enrollment_batch, attendance_date, teacher, subject, role-related joins).
+
+2) Domain constraints:
+- Enforce uniqueness and integrity where business rules require it.
+- Add model-level clean() and/or DB constraints for invalid combinations.
+
+3) Attendance/report cleanup:
+- Remove duplicated helper code and consolidate report generation utility functions.
+- Add guardrails for large date ranges and large exports (timeouts/chunking strategy).
+
+E. Testing and CI baseline
+1) Add test suites:
+- Unit tests for roles/permissions and utility functions.
+- View tests for all major routes per role (admin, teacher, student, anonymous).
+- Import tests (happy path + malformed files + duplicates + edge cases).
+- Report generation tests for XLSX/PDF outputs.
+
+2) Minimum coverage target:
+- Achieve >=70% overall coverage initially.
+- Critical modules (auth/roles/import/attendance) >=80%.
+
+3) Add CI workflow:
+- Run lint + tests + migration checks on every push/PR.
+- Fail build on migration drift.
+
+F. Operational readiness
+1) Structured logging:
+- Add structured logs around imports, auth events, report generation, and permission denials.
+- Include request correlation id where possible.
+
+2) Health and maintainability:
+- Add health check endpoint.
+- Document runbook for backup/restore of SQLite (and migration path to PostgreSQL).
+
+3) Documentation refresh:
+- Update README with setup, env vars, role matrix, import formats, and troubleshooting.
+
+Acceptance criteria
+1) All major role-based paths tested and passing in automated tests.
+2) No dev secrets or debug defaults in production config.
+3) UI navigation is role-aware and exposes complete workflows.
+4) Imports provide preview, detailed errors, and deterministic upsert behavior.
+5) Large list views are paginated and filterable.
+6) CI executes tests and blocks regressions.
+7) Code quality check passes and no unresolved framework warnings.
+
+Manual scenario checklist (must pass)
+1) Anonymous user:
+- Tries protected routes and gets redirected to login with preserved next path.
+
+2) First-login student:
+- Is redirected to password change once, changes password, then lands in student-appropriate module.
+
+3) First-login teacher:
+- Same forced password flow with teacher-appropriate destination.
+
+4) Admin:
+- Can import students/teachers/subjects with clear preview and error reporting.
+- Can access all modules and dashboards.
+
+5) Teacher:
+- Sees only authorized student/faculty data.
+- Can manage assignments/attendance in own scope.
+
+6) Student:
+- Can only view own assignments/attendance/timetable.
+- Cannot access admin-only screens.
+
+7) Reporting:
+- Attendance report for a realistic date range exports valid XLSX and PDF.
+
+Deliverables
+1) Code changes across settings, views, templates, forms, models, and tests.
+2) Migration files for any schema/index updates.
+3) Updated README and import format guides.
+4) Test report summary and coverage output.
+5) Short changelog explaining user-visible improvements.
+
+Execution order (recommended)
+1) Security settings and environment split.
+2) Tests for current behavior (lock baseline).
+3) Import validation + preview refactor.
+4) Navigation/dashboard/list UX improvements.
+5) Performance tuning and indexes.
+6) CI and documentation finalization.
+
+Constraints
+- Preserve existing URL names unless migration plan is documented.
+- Keep backward compatibility for existing import templates where possible.
+- Avoid destructive data migrations without backup instructions.
