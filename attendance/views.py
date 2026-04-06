@@ -531,6 +531,74 @@ class AttendanceReportDownloadView(LoginRequiredMixin, RoleFilteredAttendanceQue
         response['Content-Disposition'] = f'attachment; filename="{filename_base}.xlsx"'
         return response
 
+    def _build_pdf_response(self, filename_base, title_text, report_dates, rows):
+        output = BytesIO()
+        document = SimpleDocTemplate(
+            output,
+            pagesize=landscape(A4),
+            rightMargin=20,
+            leftMargin=20,
+            topMargin=20,
+            bottomMargin=20,
+        )
+        styles = getSampleStyleSheet()
+
+        story = [
+            Paragraph(title_text, styles['Title']),
+            Spacer(1, 12),
+            Paragraph(
+                f'Date Range: {report_dates[0]} to {report_dates[-1]}' if report_dates else 'Date Range: -',
+                styles['Normal'],
+            ),
+            Spacer(1, 12),
+        ]
+
+        headers = ['Roll No', 'Name'] + [report_date.strftime('%d-%b') for report_date in report_dates] + ['Percentage']
+        table_data = [headers]
+        if rows:
+            for row in rows:
+                table_data.append([
+                    row['roll_no'],
+                    row['name'],
+                    *row['statuses'],
+                    row['percentage_display'],
+                ])
+        else:
+            table_data.append(['No matching attendance records found.'] + [''] * (len(headers) - 1))
+
+        page_width = landscape(A4)[0] - document.leftMargin - document.rightMargin
+        fixed_widths = [90, 220, 58]
+        remaining_width = max(page_width - sum(fixed_widths), 0)
+        date_width = (remaining_width / len(report_dates)) if report_dates else 0
+        column_widths = [fixed_widths[0], fixed_widths[1]] + [date_width for _ in report_dates] + [fixed_widths[2]]
+
+        table = Table(table_data, repeatRows=1, colWidths=column_widths)
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#155eef')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.lightgrey]),
+            ('ALIGN', (2, 1), (-1, -1), 'CENTER'),
+        ])
+
+        for row_index, row in enumerate(rows, start=1):
+            if row['highlight']:
+                table_style.add('BACKGROUND', (0, row_index), (-1, row_index), colors.HexColor('#FDE2E1'))
+                table_style.add('TEXTCOLOR', (0, row_index), (-1, row_index), colors.HexColor('#7A1E1E'))
+
+        table.setStyle(table_style)
+        story.append(table)
+
+        document.build(story)
+        output.seek(0)
+
+        response = HttpResponse(output.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}.pdf"'
+        return response
+
 
 class AdminOnlyMixin(UserPassesTestMixin):
     def test_func(self):

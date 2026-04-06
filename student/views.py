@@ -14,7 +14,7 @@ from openpyxl import Workbook, load_workbook
 
 from LMS.roles import get_logged_in_name, get_student_profile, get_teacher_profile, is_admin_user
 from LMS.views import access_denied_response
-from .models import EnrollmentYear, Faculty, Student
+from .models import EnrollmentYear, Faculty, Student, Subject
 from .forms import FirstLoginPasswordChangeForm
 
 
@@ -250,6 +250,113 @@ class StudentImportTemplateView(LoginRequiredMixin, AdminOnlyMixin, View):
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         )
         response['Content-Disposition'] = 'attachment; filename="student_import_template.xlsx"'
+        return response
+
+
+class SubjectListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = Subject
+    template_name = 'student/subject_list.html'
+    context_object_name = 'subjects'
+
+    def get_queryset(self):
+        return Subject.objects.select_related('faculty').order_by('faculty__name', 'name')
+
+
+class SubjectImportView(LoginRequiredMixin, AdminOnlyMixin, View):
+    template_name = 'student/subject_import.html'
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        upload = request.FILES.get('xlsx_file')
+        if not upload:
+            messages.error(request, 'Please select an XLSX file to import.')
+            return redirect('student:subject-import')
+
+        if not upload.name.lower().endswith('.xlsx'):
+            messages.error(request, 'Only .xlsx files are supported.')
+            return redirect('student:subject-import')
+
+        try:
+            workbook = load_workbook(upload, data_only=True)
+        except Exception:
+            messages.error(request, 'Unable to read the file. Please use the provided template.')
+            return redirect('student:subject-import')
+
+        worksheet = workbook.active
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+
+        for row in worksheet.iter_rows(min_row=2, values_only=True):
+            if not row or all(value in (None, '') for value in row):
+                continue
+
+            name = str(row[0]).strip() if row[0] else ''
+            abbreviation = str(row[1]).strip() if row[1] else None
+            code = str(row[2]).strip() if row[2] else None
+            faculty_name = str(row[3]).strip() if row[3] else None
+
+            if not name:
+                skipped_count += 1
+                continue
+
+            faculty = None
+            if faculty_name:
+                faculty, _ = Faculty.objects.get_or_create_case_insensitive(faculty_name)
+
+            defaults = {
+                'name': name,
+                'abbreviation': abbreviation,
+                'code': code,
+                'faculty': faculty,
+            }
+
+            lookup = None
+            if code:
+                lookup = {'code': code}
+            elif abbreviation:
+                lookup = {'abbreviation': abbreviation}
+            else:
+                lookup = {'name': name}
+
+            try:
+                _, created = Subject.objects.update_or_create(defaults=defaults, **lookup)
+            except Exception:
+                skipped_count += 1
+                continue
+
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        messages.success(
+            request,
+            f'Import finished. Created: {created_count}, Updated: {updated_count}, Skipped: {skipped_count}.',
+        )
+        return redirect('student:subject-list')
+
+
+class SubjectImportTemplateView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def get(self, request):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Subjects'
+
+        worksheet.append(['name', 'abbreviation', 'code', 'faculty'])
+        worksheet.append(['Discrete Mathematics', 'DM', 'MATH101', 'Computer Science'])
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="subject_import_template.xlsx"'
         return response
 
 

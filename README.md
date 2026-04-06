@@ -154,6 +154,8 @@ This project now includes a desktop launcher that can start LMS like an app.
 - `install_app.bat`: one-time installer for environment, dependencies, and migrations.
 - `launch_app.bat`: fast launcher that only runs the app.
 - `requirements_runtime.txt`: runtime package list used by installer.
+- `lms_desktop_app.py`: desktop window app that embeds LMS (no external browser needed).
+- `build_lms_desktop_app.bat`: build script for desktop app EXE.
 
 ### Segment 1: Install App (run once)
 
@@ -164,9 +166,24 @@ This project now includes a desktop launcher that can start LMS like an app.
 
 ### Segment 2: Launch App (daily use)
 
-1. Double-click `launch_app.bat` or `dist/LMS-Launcher.exe`.
-2. It starts the server immediately and opens the browser.
+1. Double-click `launch_app.bat`.
+2. It starts the server and opens LMS in a desktop app window (embedded webview).
 3. No dependency installation or migration checks run during launch.
+
+### Build Desktop EXE (optional)
+
+1. Run `build_lms_desktop_app.bat`.
+2. It reads version from `APP_VERSION.txt`.
+3. It produces:
+	- `dist/LMS-Desktop-v<version>.exe` (versioned release)
+	- `dist/LMS-Desktop-latest.exe` (stable latest alias)
+
+### App Version Naming Convention
+
+- Version file: `APP_VERSION.txt`
+- Format: `major.minor.patch` (example: `2.0.0`)
+- Release artifact: `LMS-Desktop-v<major.minor.patch>.exe`
+- Convenience alias for users: `LMS-Desktop-latest.exe`
 
 ### How end users can run LMS
 

@@ -12,10 +12,22 @@
 
             <div class="d-flex flex-wrap gap-2">
                 <a class="btn btn-primary" href="{% url 'home' %}">Go Home</a>
-                <a class="btn btn-outline-primary" href="{% url 'student:student-list' %}">Students Portal</a>
-                <a class="btn btn-outline-primary" href="{% url 'teacher:teacher-list' %}">Teachers Portal</a>
-                <a class="btn btn-outline-primary" href="{% url 'assignment:assignment-list' %}">Assignments</a>
-                <a class="btn btn-outline-primary" href="{% url 'attendance:attendance-list' %}">Attendance</a>
+
+                {% if user.is_authenticated %}
+                    {% if is_admin_like_user or is_teacher_user %}
+                        <a class="btn btn-outline-primary" href="{% url 'student:student-list' %}">Students Portal</a>
+                    {% endif %}
+
+                    {% if is_admin_like_user or is_teacher_user %}
+                        <a class="btn btn-outline-primary" href="{% url 'teacher:teacher-list' %}">Teachers Portal</a>
+                    {% endif %}
+
+                    <a class="btn btn-outline-primary" href="{% url 'assignment:assignment-list' %}">Assignments</a>
+                    <a class="btn btn-outline-primary" href="{% url 'attendance:attendance-list' %}">Attendance</a>
+                    <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Logout</a>
+                {% else %}
+                    <a class="btn btn-outline-secondary" href="{% url 'login' %}">Login</a>
+                {% endif %}
             </div>
         </div>
     </div>

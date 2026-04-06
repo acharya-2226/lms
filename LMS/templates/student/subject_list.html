@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Subjects | LMS{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+	<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+		<div>
+			<span class="eyebrow">Records</span>
+			<h1 class="h2 mb-0">Subjects</h1>
+		</div>
+		<div class="d-flex flex-wrap align-items-center gap-2">
+			<a class="btn btn-outline-secondary" href="{% url 'student:subject-import-template' %}">Download Format</a>
+			<a class="btn btn-outline-primary" href="{% url 'student:subject-import' %}">Import XLSX</a>
+			<a class="btn btn-light" href="{% url 'student:student-list' %}">Back to Students</a>
+		</div>
+	</div>
+
+	{% if subjects %}
+		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
+			<table class="table table-compact align-middle mb-0">
+				<thead class="table-light">
+					<tr>
+						<th>Name</th>
+						<th>Abbreviation</th>
+						<th>Code</th>
+						<th>Faculty</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for subject in subjects %}
+						<tr>
+							<td>{{ subject.name }}</td>
+							<td>{{ subject.abbreviation|default:'-' }}</td>
+							<td>{{ subject.code|default:'-' }}</td>
+							<td>{{ subject.faculty|default:'-' }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	{% else %}
+		<div class="empty-state card border-0 shadow-sm">
+			<div class="card-body p-5 text-center">
+				<h2 class="h4">No subjects yet</h2>
+				<p class="text-secondary mb-4">Import subjects to start using them in assignments and attendance.</p>
+				<a class="btn btn-primary" href="{% url 'student:subject-import' %}">Import Subjects</a>
+			</div>
+		</div>
+	{% endif %}
+</section>
+{% endblock %}

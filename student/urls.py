@@ -7,6 +7,9 @@ from .views import (
     StudentDeleteView,
     StudentImportView,
     StudentImportTemplateView,
+    SubjectListView,
+    SubjectImportView,
+    SubjectImportTemplateView,
     FirstLoginPasswordChangeView,
 )
 
@@ -16,6 +19,9 @@ urlpatterns = [
     path('', StudentListView.as_view(), name='student-list'),
     path('import/', StudentImportView.as_view(), name='student-import'),
     path('import/template/', StudentImportTemplateView.as_view(), name='student-import-template'),
+    path('subjects/', SubjectListView.as_view(), name='subject-list'),
+    path('subjects/import/', SubjectImportView.as_view(), name='subject-import'),
+    path('subjects/import/template/', SubjectImportTemplateView.as_view(), name='subject-import-template'),
     path('change-password/', FirstLoginPasswordChangeView.as_view(), name='first-login-change-password'),
     path('<int:pk>/', StudentDetailView.as_view(), name='student-detail'),
     path('create/', StudentCreateView.as_view(), name='student-create'),

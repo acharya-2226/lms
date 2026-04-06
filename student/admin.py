@@ -4,6 +4,8 @@ from django.utils.html import format_html, mark_safe
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib import messages
+from io import BytesIO
+from openpyxl import Workbook, load_workbook
 from .models import EnrollmentYear, Faculty, Student, Subject
 from .admin_actions import (
     import_students_from_csv, 
@@ -31,8 +33,139 @@ class EnrollmentYearAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code')
-    search_fields = ('name', 'code')
+    list_display = ('name', 'abbreviation', 'code', 'faculty')
+    search_fields = ('name', 'abbreviation', 'code', 'faculty__name')
+    list_filter = ('faculty',)
+    change_list_template = 'admin/subject/change_list.html'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'import-xlsx/',
+                self.admin_site.admin_view(self.import_xlsx),
+                name='student_subject_import_xlsx',
+            ),
+            path(
+                'download-xlsx-template/',
+                self.admin_site.admin_view(self.download_xlsx_template),
+                name='student_subject_download_xlsx_template',
+            ),
+        ]
+        return custom_urls + urls
+
+    def import_xlsx(self, request):
+        if request.method == 'POST':
+            upload = request.FILES.get('xlsx_file')
+            if not upload:
+                messages.error(request, 'Please select an XLSX file to import.')
+                return render(request, 'admin/subject_import.html', {'admin_site': self.admin_site})
+
+            if not upload.name.lower().endswith('.xlsx'):
+                messages.error(request, 'Only .xlsx files are supported.')
+                return render(request, 'admin/subject_import.html', {'admin_site': self.admin_site})
+
+            try:
+                workbook = load_workbook(upload, data_only=True)
+            except Exception:
+                messages.error(request, 'Unable to read the file. Please use the provided template.')
+                return render(request, 'admin/subject_import.html', {'admin_site': self.admin_site})
+
+            worksheet = workbook.active
+            created_count = 0
+            updated_count = 0
+            skipped_count = 0
+
+            for row in worksheet.iter_rows(min_row=2, values_only=True):
+                if not row or all(value in (None, '') for value in row):
+                    continue
+
+                name = str(row[0]).strip() if row[0] else ''
+                abbreviation = str(row[1]).strip() if row[1] else None
+                code = str(row[2]).strip() if row[2] else None
+                faculty_name = str(row[3]).strip() if row[3] else None
+
+                if not name:
+                    skipped_count += 1
+                    continue
+
+                faculty = None
+                if faculty_name:
+                    faculty, _ = Faculty.objects.get_or_create_case_insensitive(faculty_name)
+
+                defaults = {
+                    'name': name,
+                    'abbreviation': abbreviation,
+                    'code': code,
+                    'faculty': faculty,
+                }
+
+                lookup = None
+                if code:
+                    lookup = {'code': code}
+                elif abbreviation:
+                    lookup = {'abbreviation': abbreviation}
+                else:
+                    lookup = {'name': name}
+
+                try:
+                    _, created = Subject.objects.update_or_create(defaults=defaults, **lookup)
+                except Exception:
+                    skipped_count += 1
+                    continue
+
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+            messages.success(
+                request,
+                f'Import finished. Created: {created_count}, Updated: {updated_count}, Skipped: {skipped_count}.',
+            )
+            return redirect('admin:student_subject_changelist')
+
+        return render(
+            request,
+            'admin/subject_import.html',
+            {
+                'admin_site': self.admin_site,
+                'title': 'Import Subjects from XLSX',
+                'has_change_permission': self.has_change_permission(request),
+            },
+        )
+
+    def download_xlsx_template(self, request):
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Subjects'
+
+        worksheet.append(['name', 'abbreviation', 'code', 'faculty'])
+        worksheet.append(['Discrete Mathematics', 'DM', 'MATH101', 'Computer Science'])
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = 'attachment; filename="subject_import_template.xlsx"'
+        return response
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        app_label = self.model._meta.app_label
+        model_name = self.model._meta.model_name
+        try:
+            extra_context['import_xlsx_url'] = reverse(f'admin:{app_label}_{model_name}_import_xlsx')
+            extra_context['download_template_url'] = reverse(f'admin:{app_label}_{model_name}_download_xlsx_template')
+        except Exception:
+            base = request.path.rsplit('/', 1)[0] + '/'
+            extra_context['import_xlsx_url'] = base + 'import-xlsx/'
+            extra_context['download_template_url'] = base + 'download-xlsx-template/'
+        return super().changelist_view(request, extra_context=extra_context)
 
 
 @admin.register(Student)

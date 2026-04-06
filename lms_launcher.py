@@ -56,8 +56,8 @@ class LMSLauncher:
             fg="#355070",
         ).pack(anchor="w", pady=(10, 0))
 
-        log_frame = tk.Frame(self.root, padx=12, pady=(0, 12))
-        log_frame.pack(fill="both", expand=True)
+        log_frame = tk.Frame(self.root, padx=12)
+        log_frame.pack(fill="both", expand=True, pady=(0, 12))
         self.log_box = scrolledtext.ScrolledText(log_frame, wrap="word", state="disabled")
         self.log_box.pack(fill="both", expand=True)
 

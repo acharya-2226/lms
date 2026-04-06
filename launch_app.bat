@@ -11,5 +11,4 @@ if not exist env\Scripts\python.exe (
 
 set PYTHON_EXE=env\Scripts\python.exe
 echo Starting LMS...
-start "" http://127.0.0.1:8000/
-%PYTHON_EXE% manage.py runserver 127.0.0.1:8000
+%PYTHON_EXE% lms_desktop_app.py

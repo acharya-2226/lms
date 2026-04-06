@@ -201,6 +201,297 @@
 				alert.close();
 			}, 4000);
 		});
+
+		const isDesktopApp = !!(window.pywebview && window.pywebview.api && window.pywebview.api.save_download);
+
+		let desktopMenu = null;
+		let desktopMenuTarget = null;
+
+		function ensureDesktopContextMenu() {
+			if (!isDesktopApp || desktopMenu) {
+				return;
+			}
+
+			desktopMenu = document.createElement('div');
+			desktopMenu.id = 'desktop-context-menu';
+			desktopMenu.style.position = 'fixed';
+			desktopMenu.style.zIndex = '99999';
+			desktopMenu.style.minWidth = '180px';
+			desktopMenu.style.background = '#ffffff';
+			desktopMenu.style.border = '1px solid rgba(0,0,0,0.15)';
+			desktopMenu.style.borderRadius = '8px';
+			desktopMenu.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
+			desktopMenu.style.padding = '6px';
+			desktopMenu.style.display = 'none';
+
+			const items = [
+				{ label: 'Copy', action: 'copy' },
+				{ label: 'Cut', action: 'cut' },
+				{ label: 'Paste', action: 'paste' },
+				{ label: 'Select All', action: 'selectAll' },
+			];
+
+			items.forEach((item) => {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.textContent = item.label;
+				button.dataset.action = item.action;
+				button.style.width = '100%';
+				button.style.textAlign = 'left';
+				button.style.border = '0';
+				button.style.background = 'transparent';
+				button.style.padding = '8px 10px';
+				button.style.borderRadius = '6px';
+				button.style.cursor = 'pointer';
+				button.style.fontSize = '14px';
+				button.addEventListener('mouseenter', () => {
+					button.style.background = '#f2f6ff';
+				});
+				button.addEventListener('mouseleave', () => {
+					button.style.background = 'transparent';
+				});
+				button.addEventListener('click', async () => {
+					await runDesktopContextAction(item.action);
+					hideDesktopContextMenu();
+				});
+				desktopMenu.appendChild(button);
+			});
+
+			document.body.appendChild(desktopMenu);
+		}
+
+		function isEditableTarget(target) {
+			if (!target) {
+				return false;
+			}
+			if (target.isContentEditable) {
+				return true;
+			}
+			const tag = (target.tagName || '').toLowerCase();
+			return tag === 'input' || tag === 'textarea';
+		}
+
+		function hideDesktopContextMenu() {
+			if (!desktopMenu) {
+				return;
+			}
+			desktopMenu.style.display = 'none';
+			desktopMenuTarget = null;
+		}
+
+		function showDesktopContextMenu(x, y, target) {
+			if (!desktopMenu) {
+				return;
+			}
+
+			desktopMenuTarget = target;
+			desktopMenu.style.display = 'block';
+			desktopMenu.style.left = `${x}px`;
+			desktopMenu.style.top = `${y}px`;
+
+			const menuRect = desktopMenu.getBoundingClientRect();
+			if (menuRect.right > window.innerWidth) {
+				desktopMenu.style.left = `${Math.max(8, x - menuRect.width)}px`;
+			}
+			if (menuRect.bottom > window.innerHeight) {
+				desktopMenu.style.top = `${Math.max(8, y - menuRect.height)}px`;
+			}
+		}
+
+		async function runDesktopContextAction(action) {
+			if (!desktopMenuTarget) {
+				return;
+			}
+
+			desktopMenuTarget.focus();
+
+			if (action === 'paste') {
+				try {
+					if (navigator.clipboard && navigator.clipboard.readText) {
+						const text = await navigator.clipboard.readText();
+						if (isEditableTarget(desktopMenuTarget)) {
+							const tag = (desktopMenuTarget.tagName || '').toLowerCase();
+							if (tag === 'input' || tag === 'textarea') {
+								const start = desktopMenuTarget.selectionStart ?? desktopMenuTarget.value.length;
+								const end = desktopMenuTarget.selectionEnd ?? desktopMenuTarget.value.length;
+								const value = desktopMenuTarget.value || '';
+								desktopMenuTarget.value = value.slice(0, start) + text + value.slice(end);
+								desktopMenuTarget.selectionStart = desktopMenuTarget.selectionEnd = start + text.length;
+								desktopMenuTarget.dispatchEvent(new Event('input', { bubbles: true }));
+							} else {
+								document.execCommand('insertText', false, text);
+							}
+						}
+						return;
+					}
+				} catch (error) {
+					// Fall back to execCommand if clipboard API is unavailable.
+				}
+			}
+
+			document.execCommand(action);
+		}
+
+		function parseFilename(contentDisposition) {
+			if (!contentDisposition) {
+				return null;
+			}
+			const match = contentDisposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+			if (!match || !match[1]) {
+				return null;
+			}
+			return decodeURIComponent(match[1].trim());
+		}
+
+		async function blobToBase64(blob) {
+			const buffer = await blob.arrayBuffer();
+			let binary = '';
+			const bytes = new Uint8Array(buffer);
+			const chunkSize = 0x8000;
+			for (let i = 0; i < bytes.length; i += chunkSize) {
+				const chunk = bytes.subarray(i, i + chunkSize);
+				binary += String.fromCharCode(...chunk);
+			}
+			return btoa(binary);
+		}
+
+		function fallbackFilenameByType(contentType, requestedFormat) {
+			if (requestedFormat === 'pdf' || (contentType && contentType.includes('pdf'))) {
+				return 'download.pdf';
+			}
+			if (requestedFormat === 'xlsx' || (contentType && (contentType.includes('sheet') || contentType.includes('excel')))) {
+				return 'download.xlsx';
+			}
+			return 'download.bin';
+		}
+
+		function getCsrfToken() {
+			const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+			if (input && input.value) {
+				return input.value;
+			}
+			return '';
+		}
+
+		async function handleDesktopDownload(url, options, requestedFormat) {
+			const response = await fetch(url, {
+				credentials: 'same-origin',
+				...options,
+			});
+
+			if (!response.ok) {
+				alert(`Download failed (${response.status}). Please try again.`);
+				return;
+			}
+
+			const contentType = response.headers.get('content-type') || '';
+			if (contentType.includes('text/html')) {
+				alert('Download failed. The server returned an HTML page instead of a file.');
+				return;
+			}
+
+			const disposition = response.headers.get('content-disposition') || '';
+			const filename = parseFilename(disposition) || fallbackFilenameByType(contentType, requestedFormat);
+			const blob = await response.blob();
+			const contentB64 = await blobToBase64(blob);
+
+			const result = await window.pywebview.api.save_download({
+				filename,
+				content_b64: contentB64,
+			});
+
+			if (!result || !result.ok) {
+				if (!result || !result.cancelled) {
+					alert((result && result.error) ? result.error : 'Save failed.');
+				}
+			}
+		}
+
+		document.addEventListener('click', async (event) => {
+			hideDesktopContextMenu();
+
+			if (!isDesktopApp) {
+				return;
+			}
+
+			const link = event.target.closest('a[href]');
+			if (!link) {
+				return;
+			}
+
+			const href = link.getAttribute('href') || '';
+			const isDownloadLink = link.hasAttribute('download') || href.includes('/download/') || href.includes('import-template');
+			if (!isDownloadLink) {
+				return;
+			}
+
+			event.preventDefault();
+			await handleDesktopDownload(href, { method: 'GET' }, null);
+		});
+
+		if (isDesktopApp) {
+			ensureDesktopContextMenu();
+			document.addEventListener('contextmenu', (event) => {
+				const target = event.target;
+				if (!isEditableTarget(target)) {
+					hideDesktopContextMenu();
+					return;
+				}
+
+				event.preventDefault();
+				showDesktopContextMenu(event.clientX, event.clientY, target);
+			});
+
+			document.addEventListener('keydown', (event) => {
+				if (event.key === 'Escape') {
+					hideDesktopContextMenu();
+				}
+			});
+		}
+
+		document.querySelectorAll('form[action*="/download/"]').forEach((form) => {
+			form.addEventListener('submit', async (event) => {
+				if (!isDesktopApp) {
+					return;
+				}
+
+				event.preventDefault();
+				const data = new FormData(form);
+				const submitter = event.submitter || document.activeElement;
+				let requestedFormat = null;
+				if (submitter && submitter.name) {
+					data.set(submitter.name, submitter.value || '');
+					if (submitter.name === 'format') {
+						requestedFormat = submitter.value || null;
+					}
+				}
+
+				if (!data.get('csrfmiddlewaretoken')) {
+					const csrf = getCsrfToken();
+					if (csrf) {
+						data.set('csrfmiddlewaretoken', csrf);
+					}
+				}
+
+				const body = new URLSearchParams();
+				for (const [key, value] of data.entries()) {
+					body.append(key, value);
+				}
+
+				await handleDesktopDownload(
+					form.getAttribute('action') || window.location.pathname,
+					{
+						method: (form.method || 'POST').toUpperCase(),
+						headers: {
+							'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+							'X-CSRFToken': data.get('csrfmiddlewaretoken') || '',
+						},
+						body,
+					},
+					requestedFormat,
+				);
+			});
+		});
 	</script>
 	{% block extra_js %}{% endblock %}
 	{% block custom_js %}{% endblock %}

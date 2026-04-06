@@ -34,9 +34,18 @@ class EnrollmentYear(models.Model):
 class Subject(models.Model):
     name = models.CharField(max_length=150, unique=True)
     code = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None)
+    abbreviation = models.CharField(max_length=20, unique=True, null=True, blank=True, default=None)
+    faculty = models.ForeignKey(
+        Faculty,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        related_name='subjects',
+    )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.abbreviation})" if self.abbreviation else self.name
 
 
 class Student(models.Model):
