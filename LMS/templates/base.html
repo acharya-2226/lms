@@ -49,20 +49,28 @@
 							<a class="nav-link {% if current_url_name == 'home' and not current_namespace %}active{% endif %}" href="{% url 'home' %}"
 								{% if current_url_name == 'home' and not current_namespace %}aria-current="page"{% endif %}>Home</a>
 						</li>
-						{% if is_admin_like_user or has_teacher_profile %}
+						{% if request.user.is_authenticated and is_admin_like_user or request.user.is_authenticated and has_teacher_profile %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'student' %}active{% endif %}"
 								href="{% url 'student:student-list' %}"
 								{% if current_namespace == 'student' %}aria-current="page"{% endif %}>Students</a>
 						</li>
 						{% endif %}
-						{% if is_admin_like_user %}
+						{% if request.user.is_authenticated and is_admin_like_user or request.user.is_authenticated and has_teacher_profile %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'teacher' %}active{% endif %}"
 								href="{% url 'teacher:teacher-list' %}"
 								{% if current_namespace == 'teacher' %}aria-current="page"{% endif %}>Teachers</a>
 						</li>
 						{% endif %}
+						{% if request.user.is_authenticated and is_admin_like_user %}
+						<li class="nav-item">
+							<a class="nav-link {% if current_namespace == 'student' and current_url_name == 'subject-list' %}active{% endif %}"
+								href="{% url 'student:subject-list' %}"
+								{% if current_namespace == 'student' and current_url_name == 'subject-list' %}aria-current="page"{% endif %}>Subjects</a>
+						</li>
+						{% endif %}
+						{% if request.user.is_authenticated %}
 						<li class="nav-item">
 							<a class="nav-link {% if current_namespace == 'assignment' %}active{% endif %}"
 								href="{% url 'assignment:assignment-list' %}"
@@ -73,6 +81,14 @@
 								href="{% url 'attendance:attendance-list' %}"
 								{% if current_namespace == 'attendance' %}aria-current="page"{% endif %}>Attendance</a>
 						</li>
+						{% endif %}
+						{% if request.user.is_authenticated and has_student_profile %}
+						<li class="nav-item">
+							<a class="nav-link {% if current_namespace == 'attendance' and current_url_name == 'attendance-timetable' %}active{% endif %}"
+								href="{% url 'attendance:attendance-timetable' %}"
+								{% if current_namespace == 'attendance' and current_url_name == 'attendance-timetable' %}aria-current="page"{% endif %}>Timetable</a>
+						</li>
+						{% endif %}
 					</ul>
 					{% endwith %}
 
@@ -137,15 +153,23 @@
 					<h3 class="footer-heading">Quick Links</h3>
 					<ul class="footer-links list-unstyled mb-0">
 						<li><a href="{% url 'home' %}">Home</a></li>
-						{% if is_admin_like_user or has_teacher_profile %}
+						{% if request.user.is_authenticated and is_admin_like_user or request.user.is_authenticated and has_teacher_profile %}
 						<li><a href="{% url 'student:student-list' %}">Students</a></li>
 						{% endif %}
-						{% if is_admin_like_user %}
+						{% if request.user.is_authenticated and is_admin_like_user or request.user.is_authenticated and has_teacher_profile %}
 						<li><a href="{% url 'teacher:teacher-list' %}">Teachers</a></li>
 						{% endif %}
+						{% if request.user.is_authenticated and is_admin_like_user %}
+						<li><a href="{% url 'student:subject-list' %}">Subjects</a></li>
+						{% endif %}
+						{% if request.user.is_authenticated %}
 						<li><a href="{% url 'assignment:assignment-list' %}">Assignments</a></li>
 						<li><a href="{% url 'attendance:attendance-list' %}">Attendance</a></li>
-						{% if is_admin_like_user %}
+						{% endif %}
+						{% if request.user.is_authenticated and has_student_profile %}
+						<li><a href="{% url 'attendance:attendance-timetable' %}">Timetable</a></li>
+						{% endif %}
+						{% if request.user.is_authenticated and is_admin_like_user %}
 						<li><a href="{% url 'admin:index' %}">Admin</a></li>
 						{% endif %}
 					</ul>

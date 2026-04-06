@@ -22,11 +22,57 @@
 				</div>
 				<div class="d-flex flex-wrap gap-2">
 					<a class="btn btn-outline-secondary" href="{% url 'student:subject-import-template' %}">Download Format</a>
-					<button type="submit" class="btn btn-primary">Import Subjects</button>
+					<button type="submit" name="action" value="preview" class="btn btn-primary">Preview Import</button>
 					<a class="btn btn-light" href="{% url 'student:subject-list' %}">Back</a>
 				</div>
 			</form>
 		</div>
 	</div>
+
+	{% if uploaded_file_name %}
+	<div class="card shadow-sm border-0 mt-4">
+		<div class="card-body p-4">
+			<h2 class="h5 mb-3">Preview Summary</h2>
+			<p class="text-secondary mb-2">File: {{ uploaded_file_name }}</p>
+			<p class="mb-3">Creates: {{ created_count }} | Updates: {{ updated_count }} | Skipped: {{ skipped_count }}</p>
+			<div class="d-flex flex-wrap gap-2 mb-3">
+				<form method="post" class="d-inline">
+					{% csrf_token %}
+					<button type="submit" name="action" value="commit" class="btn btn-success">Commit Import</button>
+				</form>
+				{% if error_rows %}
+				<a class="btn btn-outline-danger" href="{% url 'student:subject-import-errors' %}">Download Error Report (CSV)</a>
+				{% endif %}
+			</div>
+
+			{% if preview_rows %}
+			<div class="table-responsive">
+				<table class="table table-compact align-middle mb-0">
+					<thead>
+						<tr>
+							<th>Row</th>
+							<th>Name</th>
+							<th>Abbreviation</th>
+							<th>Code</th>
+							<th>Operation</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for row in preview_rows %}
+						<tr>
+							<td>{{ row.row }}</td>
+							<td>{{ row.name }}</td>
+							<td>{{ row.abbreviation }}</td>
+							<td>{{ row.code }}</td>
+							<td class="text-capitalize">{{ row.operation }}</td>
+						</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+	{% endif %}
 </section>
 {% endblock %}

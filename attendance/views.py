@@ -207,9 +207,34 @@ class AttendanceListView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin
     model = Attendance
     template_name = 'attendance/attendance_list.html'
     context_object_name = 'attendances'
+    paginate_by = 25
 
     def get_queryset(self):
-        return self.get_role_filtered_queryset().order_by('-attendance_date', '-created_at')
+        queryset = self.get_role_filtered_queryset().order_by('-attendance_date', '-created_at')
+        faculty_id = (self.request.GET.get('faculty') or '').strip()
+        year_id = (self.request.GET.get('year') or '').strip()
+        subject_id = (self.request.GET.get('subject') or '').strip()
+
+        if faculty_id:
+            queryset = queryset.filter(faculty_id=faculty_id)
+        if year_id:
+            queryset = queryset.filter(enrollment_batch_id=year_id)
+        if subject_id:
+            queryset = queryset.filter(subject_id=subject_id)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        query_dict = self.request.GET.copy()
+        query_dict.pop('page', None)
+        context['filter_query'] = query_dict.urlencode()
+        context['selected_faculty'] = (self.request.GET.get('faculty') or '').strip()
+        context['selected_year'] = (self.request.GET.get('year') or '').strip()
+        context['selected_subject'] = (self.request.GET.get('subject') or '').strip()
+        context['faculties'] = Faculty.objects.order_by('name')
+        context['enrollment_years'] = EnrollmentYear.objects.order_by('year')
+        context['subjects'] = Subject.objects.order_by('name')
+        return context
 
 
 class AttendanceDetailView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, DetailView):
@@ -367,6 +392,8 @@ class AttendanceReportView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMix
 
 
 class AttendanceReportDownloadView(LoginRequiredMixin, RoleFilteredAttendanceQuerysetMixin, View):
+    MAX_REPORT_RANGE_DAYS = 62
+
     def post(self, request):
         form = AttendanceReportForm(request.POST)
         form.fields['subject'].queryset = self._allowed_subject_queryset()
@@ -381,6 +408,14 @@ class AttendanceReportDownloadView(LoginRequiredMixin, RoleFilteredAttendanceQue
 
         if start_date > end_date:
             messages.error(request, 'Start date cannot be after end date.')
+            return redirect('attendance:attendance-report')
+
+        day_span = (end_date - start_date).days + 1
+        if day_span > self.MAX_REPORT_RANGE_DAYS:
+            messages.error(
+                request,
+                f'Date range is too large ({day_span} days). Please use a range up to {self.MAX_REPORT_RANGE_DAYS} days.',
+            )
             return redirect('attendance:attendance-report')
 
         allowed_attendance_queryset = self._allowed_attendance_queryset(subject, start_date, end_date)

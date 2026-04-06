@@ -33,3 +33,9 @@ class Teacher(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['name'], name='teacher_name_idx'),
+            models.Index(fields=['department'], name='teacher_dept_idx'),
+        ]

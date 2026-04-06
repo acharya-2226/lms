@@ -3,14 +3,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 from django.views.generic import RedirectView
-from .views import FrontendLoginView, FrontendLogoutView, home_view
+from .views import FrontendLoginView, FrontendLogoutView, health_check_view, home_view
 
 handler403 = 'LMS.views.permission_denied_handler'
+handler400 = 'LMS.views.bad_request_handler'
+handler404 = 'LMS.views.page_not_found_handler'
+handler500 = 'LMS.views.server_error_handler'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', FrontendLoginView.as_view(), name='login'),
     path('logout/', FrontendLogoutView.as_view(), name='logout'),
+    path('health/', health_check_view, name='health-check'),
     path('', home_view, name='home'),
     path('student/', RedirectView.as_view(pattern_name='student:student-list', permanent=False)),
     path('teacher/', RedirectView.as_view(pattern_name='teacher:teacher-list', permanent=False)),

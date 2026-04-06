@@ -1,3 +1,6 @@
+from urllib.parse import quote
+
+from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
 
@@ -11,6 +14,7 @@ class FirstLoginRedirectMiddleware:
     AUTH_EXEMPT_PATH_PREFIXES = [
         '/login/',
         '/logout/',
+        '/health/',
         '/admin/login/',
         '/admin/logout/',
         '/admin/jsi18n/',
@@ -36,18 +40,26 @@ class FirstLoginRedirectMiddleware:
         if not request.user.is_authenticated:
             auth_exempt = any(path.startswith(prefix) for prefix in self.AUTH_EXEMPT_PATH_PREFIXES)
             if not auth_exempt:
-                return redirect(f"{reverse('login')}?next={path}")
+                return redirect(f"{reverse('login')}?next={quote(request.get_full_path(), safe='/?:=&')}")
             return self.get_response(request)
 
         first_login_exempt = any(path.startswith(prefix) for prefix in self.FIRST_LOGIN_EXEMPT_PATH_PREFIXES)
         if not first_login_exempt:
             student = getattr(request.user, 'student_profile', None)
             if student and student.is_first_login:
+                if not request.session.get('first_login_prompt_shown'):
+                    messages.info(request, 'Please change your temporary password to continue.')
+                    request.session['first_login_prompt_shown'] = True
                 return redirect('student:first-login-change-password')
 
             teacher = getattr(request.user, 'teacher_profile', None)
             if teacher and teacher.is_first_login:
+                if not request.session.get('first_login_prompt_shown'):
+                    messages.info(request, 'Please change your temporary password to continue.')
+                    request.session['first_login_prompt_shown'] = True
                 return redirect('teacher:first-login-change-password')
+
+            request.session.pop('first_login_prompt_shown', None)
 
         response = self.get_response(request)
         return response

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.conf import settings
 from django.shortcuts import get_object_or_404, redirect
 from django import forms
 from django.utils import timezone
@@ -10,6 +11,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from student.models import Student
 from LMS.roles import can_manage_academic_records, get_teacher_profile, is_admin_user
+from LMS.upload_utils import sanitize_filename, validate_uploaded_file
 from LMS.views import access_denied_response
 
 from .models import Assignment, AssignmentRecipient
@@ -79,12 +81,37 @@ class AssignmentListView(LoginRequiredMixin, RoleFilteredAssignmentQuerysetMixin
     model = Assignment
     template_name = 'assignment/assignment_list.html'
     context_object_name = 'assignments'
+    paginate_by = 25
 
     def get_queryset(self):
-        return self.get_role_filtered_queryset().order_by('-created_at', 'title')
+        queryset = self.get_role_filtered_queryset().order_by('-created_at', 'title')
+
+        search = (self.request.GET.get('q') or '').strip()
+        faculty_id = (self.request.GET.get('faculty') or '').strip()
+        year_id = (self.request.GET.get('year') or '').strip()
+
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+        if faculty_id:
+            queryset = queryset.filter(faculty_id=faculty_id)
+        if year_id:
+            queryset = queryset.filter(enrollment_batch_id=year_id)
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        query_dict = self.request.GET.copy()
+        query_dict.pop('page', None)
+        context['filter_query'] = query_dict.urlencode()
+        context['search_query'] = (self.request.GET.get('q') or '').strip()
+        context['selected_faculty'] = (self.request.GET.get('faculty') or '').strip()
+        context['selected_year'] = (self.request.GET.get('year') or '').strip()
+
+        from student.models import Faculty, EnrollmentYear
+
+        context['faculties'] = Faculty.objects.order_by('name')
+        context['enrollment_years'] = EnrollmentYear.objects.order_by('year')
+
         student_profile = getattr(self.request.user, 'student_profile', None)
         if student_profile:
             recipient_lookup = {
@@ -240,6 +267,19 @@ class AssignmentSubmissionView(LoginRequiredMixin, RoleFilteredAssignmentQueryse
         if not submission_file:
             messages.error(request, 'Please choose a file before submitting.')
             return redirect('assignment:assignment-detail', pk=assignment.pk)
+
+        try:
+            validate_uploaded_file(
+                submission_file,
+                allowed_extensions=set(settings.ALLOWED_ASSIGNMENT_UPLOAD_EXTENSIONS),
+                allowed_mime_types=set(settings.ALLOWED_ASSIGNMENT_UPLOAD_MIME_TYPES),
+                max_size_bytes=settings.MAX_ASSIGNMENT_UPLOAD_BYTES,
+            )
+        except Exception as exc:
+            messages.error(request, str(exc))
+            return redirect('assignment:assignment-detail', pk=assignment.pk)
+
+        submission_file.name = sanitize_filename(submission_file.name, default_stem='assignment-submission')
 
         recipient.submission_file = submission_file
         recipient.submitted_at = timezone.now()

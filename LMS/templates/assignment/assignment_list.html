@@ -14,6 +14,36 @@
 		{% endif %}
 	</div>
 
+	<form method="get" class="card border-0 shadow-sm p-3 mb-4">
+		<div class="row g-2 align-items-end">
+			<div class="col-md-4">
+				<label class="form-label mb-1" for="id_q">Search</label>
+				<input class="form-control" id="id_q" type="text" name="q" value="{{ search_query }}" placeholder="Search by assignment title">
+			</div>
+			<div class="col-md-3">
+				<label class="form-label mb-1" for="id_faculty">Faculty</label>
+				<select class="form-select" id="id_faculty" name="faculty">
+					<option value="">All faculties</option>
+					{% for faculty in faculties %}
+					<option value="{{ faculty.id }}" {% if selected_faculty == faculty.id|stringformat:'s' %}selected{% endif %}>{{ faculty.name }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label mb-1" for="id_year">Year</label>
+				<select class="form-select" id="id_year" name="year">
+					<option value="">All years</option>
+					{% for year in enrollment_years %}
+					<option value="{{ year.id }}" {% if selected_year == year.id|stringformat:'s' %}selected{% endif %}>{{ year.year }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-md-2 d-grid">
+				<button type="submit" class="btn btn-primary">Apply</button>
+			</div>
+		</div>
+	</form>
+
 	{% if assignments %}
 		<div class="table-responsive shadow-sm rounded-4 overflow-hidden bg-white border">
 			<table class="table table-compact align-middle mb-0">
@@ -81,6 +111,24 @@
 				{% endif %}
 			</div>
 		</div>
+	{% endif %}
+
+	{% if is_paginated %}
+	<nav class="mt-4" aria-label="Assignment pagination">
+		<ul class="pagination justify-content-center">
+			{% if page_obj.has_previous %}
+			<li class="page-item"><a class="page-link" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>
+			{% else %}
+			<li class="page-item disabled"><span class="page-link">Previous</span></li>
+			{% endif %}
+			<li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+			{% if page_obj.has_next %}
+			<li class="page-item"><a class="page-link" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>
+			{% else %}
+			<li class="page-item disabled"><span class="page-link">Next</span></li>
+			{% endif %}
+		</ul>
+	</nav>
 	{% endif %}
 </section>
 {% endblock %}

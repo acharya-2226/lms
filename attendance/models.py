@@ -99,6 +99,10 @@ class WeeklyClassSchedule(models.Model):
 
     class Meta:
         ordering = ['faculty__name', 'enrollment_batch__year', 'day_of_week', 'timeslot__display_order', 'timeslot__start_time']
+        indexes = [
+            models.Index(fields=['faculty', 'enrollment_batch', 'day_of_week'], name='weekly_fac_year_day_idx'),
+            models.Index(fields=['teacher', 'day_of_week'], name='weekly_teacher_day_idx'),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=['subject', 'faculty', 'enrollment_batch', 'day_of_week', 'timeslot'],
@@ -205,6 +209,12 @@ class Attendance(models.Model):
         return '-'
 
     class Meta:
+        indexes = [
+            models.Index(fields=['attendance_date'], name='attendance_date_idx'),
+            models.Index(fields=['faculty', 'enrollment_batch'], name='attendance_fac_year_idx'),
+            models.Index(fields=['teacher', 'attendance_date'], name='attendance_teacher_date_idx'),
+            models.Index(fields=['subject', 'attendance_date'], name='attendance_subject_date_idx'),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=['subject', 'faculty', 'enrollment_batch', 'attendance_date', 'timeslot'],
@@ -245,6 +255,9 @@ class AttendanceEntry(models.Model):
 
     class Meta:
         unique_together = ('attendance', 'student')
+        indexes = [
+            models.Index(fields=['student', 'status'], name='attendance_entry_status_idx'),
+        ]
 
     def __str__(self):
         return f'{self.attendance} - {self.student}'

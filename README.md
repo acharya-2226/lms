@@ -2,6 +2,16 @@
 
 Learning and Education Management System built with Django.
 
+## v1.1 Production Readiness Highlights
+
+- Environment-driven security configuration for secret key, debug mode, hosts, and database.
+- Request correlation ID support in response headers and structured logging.
+- Role-aware top navigation and role dashboard cards on home.
+- Safer upload pipeline with extension + MIME + size checks and filename sanitization.
+- Filterable and paginated list views for students, teachers, subjects, assignments, and attendance.
+- Attendance report guardrail for oversized date ranges.
+- CI workflow with lint, migration drift check, system checks, and tests.
+
 ## Overview
 
 This project manages academic records for students, teachers, assignments, and attendance. It includes role-based access control, frontend login, first-login password change, CSV-based bulk import, PDF credential export, assignment submission, attendance timetables, and compact table-based record views.
@@ -13,6 +23,38 @@ This project manages academic records for students, teachers, assignments, and a
 | Student | View their own assignments, submissions, attendance, timetable, and profile data that is permitted for their account. |
 | Teacher | View assigned classes, attendance, timetables, assignment rosters, and manage academic records for their scope. |
 | Admin / Staff | Full access to CRUD screens, imports, reports, and management views. |
+
+## Environment Configuration
+
+Copy the variables from [.env.example](.env.example) into your environment before running production.
+
+Required security and runtime variables:
+
+- `DJANGO_SECRET_KEY`
+- `DJANGO_DEBUG`
+- `DJANGO_ALLOWED_HOSTS`
+- `DJANGO_DB_ENGINE`
+- `DJANGO_DB_NAME`
+- `DJANGO_DB_USER` (if not sqlite)
+- `DJANGO_DB_PASSWORD` (if not sqlite)
+- `DJANGO_DB_HOST` (if not sqlite)
+- `DJANGO_DB_PORT` (if not sqlite)
+
+Upload-safety variables:
+
+- `LMS_MAX_IMPORT_UPLOAD_BYTES`
+- `LMS_MAX_ASSIGNMENT_UPLOAD_BYTES`
+- `LMS_ALLOWED_ASSIGNMENT_UPLOAD_EXTENSIONS`
+- `LMS_ALLOWED_ASSIGNMENT_UPLOAD_MIME_TYPES`
+
+Production cookie/transport variables:
+
+- `DJANGO_SECURE_SSL_REDIRECT`
+- `DJANGO_SESSION_COOKIE_SECURE`
+- `DJANGO_CSRF_COOKIE_SECURE`
+- `DJANGO_SECURE_HSTS_SECONDS`
+- `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS`
+- `DJANGO_SECURE_HSTS_PRELOAD`
 
 ## Feature Catalog
 
@@ -132,8 +174,58 @@ This project manages academic records for students, teachers, assignments, and a
 | Attendance portal | `/attendances/` |
 | Attendance timetable | `/attendances/timetable/` |
 | Attendance report | `/attendances/report/` |
+| Health check | `/health/` |
 | Student import template | admin student import screen |
 | Teacher import template | admin teacher import screen |
+
+## Import Matching Rules
+
+Deterministic upsert keys in the user-facing import views:
+
+- Student: `roll_number` first, then `email`, then create.
+- Teacher: `employee_id` first, then `email`, then create.
+- Subject: `code` first, then `abbreviation`, then `name`.
+
+Normalization behavior:
+
+- Faculty matching is case-insensitive.
+- Empty/invalid key columns are skipped with summary counts.
+
+## Role Navigation Matrix
+
+- Admin: Students, Teachers, Subjects, Assignments, Attendance, Admin.
+- Teacher: Students (scoped), Teachers, Assignments, Attendance.
+- Student: Assignments, Attendance, Timetable.
+
+## Troubleshooting
+
+- Login redirect loops to password change:
+	Ensure the linked `Student.is_first_login` or `Teacher.is_first_login` flag is reset to `False` after password update.
+- Import rejected:
+	Verify extension, MIME type, and file size constraints from environment variables.
+- Missing data in list pages:
+	Remove restrictive query params and retry with an empty filter form.
+
+## Backup and Restore Runbook (SQLite)
+
+Backup:
+
+1. Stop write traffic.
+2. Copy [db.sqlite3](db.sqlite3) to a timestamped backup file.
+3. Store backup in off-machine storage.
+
+Restore:
+
+1. Stop the app process.
+2. Replace [db.sqlite3](db.sqlite3) with a backup copy.
+3. Run `python manage.py migrate`.
+4. Run `python manage.py check`.
+
+PostgreSQL migration path:
+
+1. Set `DJANGO_DB_ENGINE=django.db.backends.postgresql` and DB connection variables.
+2. Run migrations against PostgreSQL.
+3. Move data using dump/load workflow and validate role-based routes and reports.
 
 ## Notes
 

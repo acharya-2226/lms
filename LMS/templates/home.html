@@ -5,41 +5,58 @@
 {% block content %}
 <section class="hero-shell">
 	<div class="container py-5 py-lg-6">
-		<div class="row align-items-center g-5">
-			<div class="col-lg-7">
-				<span class="eyebrow">Academic records</span>
-				<h1 class="display-5 fw-bold mb-3">A cleaner workflow for student and teacher records.</h1>
-				<p class="lead text-secondary mb-4">
-					Create, review, update, and delete academic profiles from a simple interface that stays easy to
-					navigate.
-				</p>
-				<div class="d-flex flex-wrap gap-2">
-					<a class="btn btn-primary btn-lg" href="{% url 'student:student-list' %}">
-						<i class="bi bi-mortarboard-fill me-2" aria-hidden="true"></i>Students
-					</a>
-					<a class="btn btn-outline-primary btn-lg" href="{% url 'teacher:teacher-list' %}">
-						<i class="bi bi-people-fill me-2" aria-hidden="true"></i>Teachers
-					</a>
-					<a class="btn btn-outline-primary btn-lg" href="{% url 'assignment:assignment-list' %}">
-						<i class="bi bi-journal-text me-2" aria-hidden="true"></i>Assignments
-					</a>
-					<a class="btn btn-outline-primary btn-lg" href="{% url 'attendance:attendance-list' %}">
-						<i class="bi bi-calendar-check me-2" aria-hidden="true"></i>Attendance
-					</a>
-				</div>
-			</div>
-			<div class="col-lg-5">
+		<div class="row g-4 mb-4">
+			<div class="col-12">
 				<div class="hero-card card border-0 shadow-lg">
 					<div class="card-body p-4 p-lg-5">
-						<h2 class="h4 mb-3">At a glance</h2>
-						<ul class="feature-list list-unstyled mb-0">
-							<li>Fast student CRUD screens</li>
-							<li>Parallel teacher CRUD screens</li>
-							<li>Assignment groups by faculty and year</li>
-							<li>Attendance tracking by faculty and year</li>
-							<li>Reusable base layout</li>
-							<li>Responsive Bootstrap components</li>
-						</ul>
+						<span class="eyebrow">Role Dashboard</span>
+						<h1 class="display-6 fw-bold mb-2">Welcome to your LMS workspace</h1>
+						<p class="lead text-secondary mb-0">
+							{% if dashboard.role == 'admin' %}
+							You have full operator access to records, imports, assignments, and attendance modules.
+							{% elif dashboard.role == 'teacher' %}
+							Your dashboard is tuned for class operations, attendance updates, and assignment management.
+							{% elif dashboard.role == 'student' %}
+							Track your assignments, attendance, and timetable from one place.
+							{% else %}
+							Sign in to view your module-specific dashboard and quick actions.
+							{% endif %}
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row g-4">
+			<div class="col-lg-4">
+				<div class="card border-0 shadow-sm h-100">
+					<div class="card-body p-4">
+						<h2 class="h5 mb-3">Quick Actions</h2>
+						<div class="d-grid gap-2">
+							{% for action in dashboard.quick_actions %}
+							<a class="btn btn-outline-primary text-start" href="{{ action.url }}">{{ action.label }}</a>
+							{% empty %}
+							<a class="btn btn-primary" href="{% url 'login' %}">Login</a>
+							{% endfor %}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-4">
+				<div class="card border-0 shadow-sm h-100">
+					<div class="card-body p-4">
+						<h2 class="h5 mb-3">Pending Summary</h2>
+						<p class="text-secondary mb-0">{{ dashboard.pending_summary }}</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-lg-4">
+				<div class="card border-0 shadow-sm h-100">
+					<div class="card-body p-4">
+						<h2 class="h5 mb-3">Recent Activity</h2>
+						<p class="text-secondary mb-0">{{ dashboard.recent_activity }}</p>
 					</div>
 				</div>
 			</div>

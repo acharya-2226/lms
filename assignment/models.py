@@ -47,6 +47,14 @@ class Assignment(models.Model):
     def __str__(self):
         return self.title
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['faculty', 'enrollment_batch'], name='assignment_fac_year_idx'),
+            models.Index(fields=['teacher'], name='assignment_teacher_idx'),
+            models.Index(fields=['due_date'], name='assignment_due_date_idx'),
+            models.Index(fields=['created_at'], name='assignment_created_idx'),
+        ]
+
 
 class AssignmentRecipient(models.Model):
     SUBMISSION_PENDING = 'pending'
@@ -85,6 +93,9 @@ class AssignmentRecipient(models.Model):
 
     class Meta:
         unique_together = ('assignment', 'student')
+        indexes = [
+            models.Index(fields=['student', 'submission_status'], name='assignment_rec_status_idx'),
+        ]
 
     def __str__(self):
         return f'{self.assignment} - {self.student}'

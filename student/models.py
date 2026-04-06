@@ -47,6 +47,12 @@ class Subject(models.Model):
     def __str__(self):
         return f"{self.name} ({self.abbreviation})" if self.abbreviation else self.name
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['name'], name='subject_name_idx'),
+            models.Index(fields=['faculty'], name='subject_faculty_idx'),
+        ]
+
 
 class Student(models.Model):
 
@@ -87,4 +93,10 @@ class Student(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['faculty', 'enrollment_batch'], name='student_fac_year_idx'),
+            models.Index(fields=['name'], name='student_name_idx'),
+        ]
     
