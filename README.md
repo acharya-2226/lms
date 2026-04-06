@@ -141,3 +141,45 @@ This project manages academic records for students, teachers, assignments, and a
 - Blocked users are shown a custom Access Denied page with navigation options.
 - The timetable and compact table views are designed to make dense academic data easier to scan.
 - Student and teacher list views still remain visible as portals, but restricted actions are filtered by role.
+
+## Windows App Launcher (Non-Technical Use)
+
+This project now includes a desktop launcher that can start LMS like an app.
+
+### What was added
+
+- `lms_launcher.py`: GUI launcher that starts Django, runs migrations, and opens LMS in a browser.
+- `build_lms_launcher.bat`: one-click build script to generate the `.exe`.
+- `dist/LMS-Launcher.exe`: built desktop executable (created by PyInstaller).
+- `install_app.bat`: one-time installer for environment, dependencies, and migrations.
+- `launch_app.bat`: fast launcher that only runs the app.
+- `requirements_runtime.txt`: runtime package list used by installer.
+
+### Segment 1: Install App (run once)
+
+1. Double-click `install_app.bat`.
+2. It creates `env` if needed.
+3. It installs required dependencies from `requirements_runtime.txt`.
+4. It runs database migrations.
+
+### Segment 2: Launch App (daily use)
+
+1. Double-click `launch_app.bat` or `dist/LMS-Launcher.exe`.
+2. It starts the server immediately and opens the browser.
+3. No dependency installation or migration checks run during launch.
+
+### How end users can run LMS
+
+1. First run `install_app.bat` once.
+2. For normal usage, run `launch_app.bat` or `LMS-Launcher.exe`.
+3. The app opens at `http://127.0.0.1:8000/`.
+
+### Rebuild the EXE (for developers)
+
+1. Double-click `build_lms_launcher.bat`.
+2. It installs/updates PyInstaller and rebuilds `dist/LMS-Launcher.exe`.
+
+### Important packaging note
+
+- This EXE is a launcher for this project, not a fully standalone packaged backend.
+- It expects the LMS source folder and virtual environment to exist locally.
